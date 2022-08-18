@@ -225,17 +225,17 @@ the AES Encryption key.
 
 DLP [Deidentify templates](https://cloud.google.com/dlp/docs/creating-templates-deid) makes managing deidentification and inspection easy to document and manage.
 
-    ```shell
-    DEID_TEMPLATE=$(curl -X POST \
-    -H "Authorization: Bearer `gcloud auth print-access-token`" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    -H "X-Goog-User-Project: ${PROJECT_ID}" \
-    --data-binary "@sample_dlp_deid_config.json" \
-    "https://dlp.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/deidentifyTemplates")
+```shell
+DEID_TEMPLATE=$(curl -X POST \
+-H "Authorization: Bearer `gcloud auth print-access-token`" \
+-H "Accept: application/json" \
+-H "Content-Type: application/json" \
+-H "X-Goog-User-Project: ${PROJECT_ID}" \
+--data-binary "@sample_dlp_deid_config.json" \
+"https://dlp.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/deidentifyTemplates")
 
-    DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
-    ```
+DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
+```
 
 > **Note:** Recommended practice is to use KMS Wrapped Key for DLP encryption.
 >
