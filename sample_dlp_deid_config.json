@@ -1,0 +1,34 @@
+{
+  "deidentifyTemplate" : {
+    "displayName" : "Email Id and Phone number masker",
+    "description":"De-identifies emails and phone numbers with unwrapped key.",
+    "deidentifyConfig": {
+      "infoTypeTransformations": {
+        "transformations": [
+          {
+            "infoTypes": [
+              {
+                "name": "EMAIL_ADDRESS"
+              },
+              {
+                "name": "PHONE_NUMBER"
+              }
+            ],
+            "primitiveTransformation": {
+              "cryptoDeterministicConfig": {
+                "cryptoKey": {
+                  "unwrapped": {
+                    "key": "VWtYcDJzNXY4eS9CP0UoSCtNYlFlU2hWbVlxM3Q2dzk="
+                  }
+                },
+                "surrogateInfoType": {
+                  "name": "BQ_TOK_FN"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
