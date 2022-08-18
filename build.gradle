@@ -20,6 +20,7 @@ plugins {
     id 'org.springframework.boot' version '2.6.10'
     id 'io.spring.dependency-management' version '1.0.12.RELEASE'
     id 'idea'
+    id 'org.sonarqube' version '3.4.0.2513'
 }
 
 group = 'com.google.cloud.solutions'
@@ -65,6 +66,14 @@ dependencies {
 
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
+}
+
+sonarqube {
+    properties {
+        property "sonar.projectKey", "bigquery-dlp-remote-function"
+        property "sonar.organization", "googlecloudplatform"
+        property "sonar.host.url", "https://sonarcloud.io"
+    }
 }
 
 spotless {

@@ -29,8 +29,18 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+    - name: Sonar Cache
+      uses: actions/checkout@v3
+      id: sonar-cache
+      with:
+        path: ~/.sonar/cache
+        key: ${{ matrix.os }}-sonar
+        restore-keys: ${{ matrix.os }}-sonar
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
       
     - name: Execute Build
-      run: ./gradlew clean test build assemble
+      run: ./gradlew clean test build sonarqube assemble
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

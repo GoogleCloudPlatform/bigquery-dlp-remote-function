@@ -2,6 +2,10 @@
 
 *Summary: Learn how to use Remote Functions to tokenize data with DLP in BigQuery using SQL.*
 
+[![Build](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml)
+[![CodeQL](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml)
+[![pages-build-deployment](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/pages/pages-build-deployment) 
+
 This document discusses how to detect and tokenize sensitive data like personally identifiable information (PII) in
 BigQuery tables with simple SQL based functions, using Cloud Data Loss Prevention
 [(Cloud DLP)](https://cloud.google.com/dlp). De-identification techniques like encryption lets you preserve the utility
