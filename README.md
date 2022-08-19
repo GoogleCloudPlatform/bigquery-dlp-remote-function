@@ -373,15 +373,15 @@ Execute the following query to observe that the remote function is tokenizing an
     SELECT
       pii_column,
       ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
+      ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
       ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(pii_column) AS aes_encrypted,
       ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_decrypted
     FROM
       UNNEST(
         [
           'My name is John Doe. My email is john@doe.com',
-          'Some non PII data',
-          '212-233-4532',
-          'some script with simple number 1234']) AS pii_column"
+          'Some non PII data'
+        ]) AS pii_column"
     ```
 
     Expected Output:
@@ -389,10 +389,8 @@ Execute the following query to observe that the remote function is tokenizing an
 
     |  pii_column  |  dlp_encrypted  |  aes_encrypted  |  aes_decrypted  |
     | -----------  | -----------  | -----------  | -----------  |
-    | My name is John Doe. My email is john@doe.com | My name is John Doe. My email is BQ_TOK_FN(40):AQy6lGvwKR+AiiRqJpEr+nBzZUzOcjXkXamUugU= | qWnwDEY3bDTCV/azveHnxUm24z/DvUcVLZWHyN4Rg16ISvqswcuYXNXsOyI4/d8M | My name is John Doe. My email is john@doe.com |
-    | Some non PII data                             | Some non PII data                                                                       | 37Agm90CqzGXwerJxai/Tf89ffRN9FpPkuuDW+rz7ns=                     | Some non PII data                             |
-    | Some non PII data                             | Some non PII data                                                                       | 37Agm90CqzGXwerJxai/Tf89ffRN9FpPkuuDW+rz7ns=                     | Some non PII data                             |
-    | Some non PII data                             | Some non PII data                                                                       | 37Agm90CqzGXwerJxai/Tf89ffRN9FpPkuuDW+rz7ns=                     | Some non PII data                             |
+    | My name is John Doe. My email is john@doe.com | My name is John Doe. My email is BQ_TOK_FN(40):AQy6lGvwKR+AiiRqJpEr+nBzZUzOcjXkXamUugU= | My name is John Doe. My email is john@doe.com                    | qWnwDEY3bDTCV/azveHnxUm24z/DvUcVLZWHyN4Rg16ISvqswcuYXNXsOyI4/d8M | My name is John Doe. My email is john@doe.com |
+    | Some non PII data                             | Some non PII data                                                                       | Some non PII data                                                | 37Agm90CqzGXwerJxai/Tf89ffRN9FpPkuuDW+rz7ns=                     | Some non PII data                             |
 
 ## Cleaning up
 
