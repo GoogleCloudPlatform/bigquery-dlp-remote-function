@@ -1,0 +1,44 @@
+{
+  "parent": "projects/test-project-id/locations/test-region1",
+  "inspectConfig": {
+    "customInfoTypes": [
+      {
+        "infoType": {
+          "name": "BQ_EE"
+        },
+        "surrogateType": {
+        }
+      }
+    ]
+  },
+  "reidentifyConfig": {
+    "recordTransformations": {
+      "fieldTransformations": [
+        {
+          "fields": [
+            {
+              "name": "bqfnvalue"
+            }
+          ],
+          "primitiveTransformation": {
+            "cryptoDeterministicConfig": {
+              "cryptoKey": {
+                "kmsWrapped": {
+                  "wrappedKey": "some+wrapped+key",
+                  "cryptoKeyName": "projects/test-project/locations/asia-southeast1/keyRings/dlp-encryption-key/cryptoKeys/key1"
+                }
+              },
+              "surrogateInfoType": {
+                "name": "BQ_EE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "transformationErrorHandling": {
+      "leaveUntransformed": {
+      }
+    }
+  }
+}

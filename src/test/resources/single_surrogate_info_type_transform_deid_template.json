@@ -1,0 +1,36 @@
+{
+  "name": "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1",
+  "displayName": "Email Id and Phone number masker",
+  "description": "De-identifies emails and phone numbers with unwrapped key.",
+  "createTime": "2022-08-09T16:13:35.867327Z",
+  "updateTime": "2022-08-17T05:58:16.867823Z",
+  "deidentifyConfig": {
+    "infoTypeTransformations": {
+      "transformations": [
+        {
+          "infoTypes": [
+            {
+              "name": "EMAIL_ADDRESS"
+            },
+            {
+              "name": "PHONE_NUMBER"
+            }
+          ],
+          "primitiveTransformation": {
+            "cryptoDeterministicConfig": {
+              "cryptoKey": {
+                "kmsWrapped": {
+                  "wrappedKey": "some+wrapped+key",
+                  "cryptoKeyName": "projects/test-project/locations/asia-southeast1/keyRings/dlp-encryption-key/cryptoKeys/key1"
+                }
+              },
+              "surrogateInfoType": {
+                "name": "BQ_TOK_FN"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

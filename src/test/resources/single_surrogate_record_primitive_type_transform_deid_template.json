@@ -1,0 +1,32 @@
+{
+  "name": "projects/norse-strata-355005/locations/asia-southeast1/deidentifyTemplates/record-type-primitive-transform",
+  "displayName": "record-type-primitive-transform",
+  "createTime": "2022-08-19T12:56:08.628127Z",
+  "updateTime": "2022-08-19T12:56:08.628127Z",
+  "deidentifyConfig": {
+    "recordTransformations": {
+      "fieldTransformations": [
+        {
+          "fields": [
+            {
+              "name": "bqfnvalue"
+            }
+          ],
+          "primitiveTransformation": {
+            "cryptoDeterministicConfig": {
+              "cryptoKey": {
+                "kmsWrapped": {
+                  "wrappedKey": "some+wrapped+key",
+                  "cryptoKeyName": "projects/test-project/locations/asia-southeast1/keyRings/dlp-encryption-key/cryptoKeys/key1"
+                }
+              },
+              "surrogateInfoType": {
+                "name": "BQ_EE"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
