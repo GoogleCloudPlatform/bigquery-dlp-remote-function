@@ -1,0 +1,68 @@
+{
+  "parent": "projects/test-project-id/locations/test-region1",
+  "inspectConfig": {
+    "customInfoTypes": [{
+      "infoType": {
+        "name": "BQ_EM"
+      },
+      "surrogateType": {
+      }
+    }, {
+      "infoType": {
+        "name": "BQ_PH"
+      },
+      "surrogateType": {
+      }
+    }]
+  },
+  "reidentifyConfig": {
+    "recordTransformations": {
+      "fieldTransformations": [{
+        "fields": [{
+          "name": "bqfnvalue"
+        }],
+        "infoTypeTransformations": {
+          "transformations": [{
+            "infoTypes": [{
+              "name": "BQ_EM"
+            }],
+            "primitiveTransformation": {
+              "cryptoDeterministicConfig": {
+                "cryptoKey": {
+                  "kmsWrapped": {
+                    "wrappedKey": "some+other+base64+em",
+                    "cryptoKeyName": "projects/test-project/locations/asia-southeast1/keyRings/dlp-encryption-key/cryptoKeys/key1"
+                  }
+                },
+                "surrogateInfoType": {
+                  "name": "BQ_EM"
+                }
+              }
+            }
+          }, {
+            "infoTypes": [{
+              "name": "BQ_PH"
+            }],
+            "primitiveTransformation": {
+              "cryptoDeterministicConfig": {
+                "cryptoKey": {
+                  "kmsWrapped": {
+                    "wrappedKey": "some+base64+key+pg==",
+                    "cryptoKeyName": "projects/test-project/locations/asia-southeast1/keyRings/dlp-encryption-key/cryptoKeys/key1"
+                  }
+                },
+                "surrogateInfoType": {
+                  "name": "BQ_PH"
+                }
+              }
+            }
+          }]
+        }
+      }]
+    },
+    "transformationErrorHandling": {
+      "leaveUntransformed": {
+      }
+    }
+  }
+}
