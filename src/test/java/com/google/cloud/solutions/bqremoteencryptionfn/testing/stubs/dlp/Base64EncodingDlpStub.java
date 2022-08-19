@@ -19,12 +19,9 @@ package com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.api.core.ApiFuture;
 import com.google.api.gax.rpc.ApiCallContext;
-import com.google.api.gax.rpc.UnaryCallable;
-import com.google.cloud.dlp.v2.stub.DlpServiceStub;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.BaseUnaryApiFuture;
-import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.TestingBackgroundResource;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.BaseUnaryApiFuture.ApiFutureFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import com.google.privacy.dlp.v2.ContentItem;
@@ -38,10 +35,10 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
-public class Base64EncodingDlpStub extends DlpServiceStub implements Serializable {
+public class Base64EncodingDlpStub implements Serializable {
   private final String projectId;
   private final String location;
   private final Set<String> tokenizeColumnIds;
@@ -52,27 +49,22 @@ public class Base64EncodingDlpStub extends DlpServiceStub implements Serializabl
     this.location = location;
   }
 
-  @Override
-  public UnaryCallable<DeidentifyContentRequest, DeidentifyContentResponse>
-      deidentifyContentCallable() {
-    return new UnaryCallable<>() {
+  public ApiFutureFactory<DeidentifyContentRequest, DeidentifyContentResponse> deidentifyFactory() {
+
+    return new ApiFutureFactory<>(DeidentifyContentRequest.class, DeidentifyContentResponse.class) {
       @Override
-      public ApiFuture<DeidentifyContentResponse> futureCall(
-          DeidentifyContentRequest deidentifyContentRequest, ApiCallContext apiCallContext) {
+      public BaseUnaryApiFuture<DeidentifyContentResponse> create(
+          DeidentifyContentRequest request, ApiCallContext context) {
         return new BaseUnaryApiFuture<>() {
           @Override
           public DeidentifyContentResponse get() {
-
             var actioner =
-                new Base64Actioner(
-                    Base64EncodingDlpStub::encodeBase64Value, deidentifyContentRequest.getParent());
+                new Base64Actioner(Base64EncodingDlpStub::encodeBase64Value, request.getParent());
 
             return DeidentifyContentResponse.newBuilder()
                 .setItem(
                     ContentItem.newBuilder()
-                        .setTable(
-                            actioner.checkAndtransformRows(
-                                deidentifyContentRequest.getItem().getTable())))
+                        .setTable(actioner.checkAndtransformRows(request.getItem().getTable())))
                 .build();
           }
         };
@@ -80,17 +72,15 @@ public class Base64EncodingDlpStub extends DlpServiceStub implements Serializabl
     };
   }
 
-  @Override
-  public UnaryCallable<ReidentifyContentRequest, ReidentifyContentResponse>
-      reidentifyContentCallable() {
-    return new UnaryCallable<>() {
+  public ApiFutureFactory<ReidentifyContentRequest, ReidentifyContentResponse> reidentifyFactory() {
+
+    return new ApiFutureFactory<>(ReidentifyContentRequest.class, ReidentifyContentResponse.class) {
       @Override
-      public ApiFuture<ReidentifyContentResponse> futureCall(
+      public BaseUnaryApiFuture<ReidentifyContentResponse> create(
           ReidentifyContentRequest request, ApiCallContext context) {
         return new BaseUnaryApiFuture<>() {
           @Override
-          public ReidentifyContentResponse get() {
-
+          public ReidentifyContentResponse get() throws InterruptedException, ExecutionException {
             var actioner =
                 new Base64Actioner(Base64EncodingDlpStub::decodeBase64String, request.getParent());
 
@@ -192,38 +182,5 @@ public class Base64EncodingDlpStub extends DlpServiceStub implements Serializabl
     return Value.newBuilder()
         .setStringValue(new String(Base64.getDecoder().decode(value.getStringValue())))
         .build();
-  }
-
-  private final TestingBackgroundResource testingBackgroundResource =
-      new TestingBackgroundResource();
-
-  @Override
-  public void shutdown() {
-    testingBackgroundResource.shutdown();
-  }
-
-  @Override
-  public boolean isShutdown() {
-    return testingBackgroundResource.isShutdown();
-  }
-
-  @Override
-  public boolean isTerminated() {
-    return testingBackgroundResource.isTerminated();
-  }
-
-  @Override
-  public void shutdownNow() {
-    testingBackgroundResource.shutdownNow();
-  }
-
-  @Override
-  public boolean awaitTermination(long l, TimeUnit timeUnit) {
-    return testingBackgroundResource.awaitTermination(l, timeUnit);
-  }
-
-  @Override
-  public void close() {
-    testingBackgroundResource.close();
   }
 }

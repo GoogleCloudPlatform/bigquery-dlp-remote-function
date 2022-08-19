@@ -17,17 +17,31 @@
 package com.google.cloud.solutions.bqremoteencryptionfn;
 
 import static com.google.cloud.solutions.bqremoteencryptionfn.testing.JsonMapper.fromJson;
+import static com.google.cloud.solutions.bqremoteencryptionfn.testing.JsonMapper.jsonToProto;
 import static com.google.cloud.solutions.bqremoteencryptionfn.testing.SimpleBigQueryRemoteFnRequestMaker.testRequest;
 import static com.google.common.truth.Truth.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.DlpFn.DlpClientFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.BaseUnaryApiFuture.ApiFutureFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.Base64EncodingDlpStub;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.MappingDeidentifyTemplateCallerFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.PatchyDlpStub;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.VerifyingReidentifyCallerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
+import com.google.privacy.dlp.v2.DeidentifyTemplate;
+import com.google.privacy.dlp.v2.ReidentifyContentRequest;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -63,13 +77,26 @@ public final class BqTokenizeFnAppTest {
   @Rule public final SpringMethodRule springMethodRule = new SpringMethodRule();
   @Autowired MockMvc mockMvc;
 
+  @Autowired TestDlpClientFactoryConfiguration dlpClientFactoryConfiguration;
+
   private final String testRequestJson;
   private final BigQueryRemoteFnResponse expectedResult;
 
+  private final List<ApiFutureFactory<?, ?>> factories;
+
   public BqTokenizeFnAppTest(
-      String testCaseName, String testRequestJson, BigQueryRemoteFnResponse expectedResult) {
+      String testCaseName,
+      String testRequestJson,
+      BigQueryRemoteFnResponse expectedResult,
+      List<ApiFutureFactory<?, ?>> factories) {
     this.testRequestJson = testRequestJson;
     this.expectedResult = expectedResult;
+    this.factories = factories;
+  }
+
+  @Before
+  public void setApiFactories() {
+    dlpClientFactoryConfiguration.factories = this.factories;
   }
 
   @Test
@@ -87,139 +114,288 @@ public final class BqTokenizeFnAppTest {
   }
 
   @Parameters(name = "{0}")
-  public static ImmutableList<Object[]> testParameters() {
-    return ImmutableList.of(
-        new Object[] {
-          /*testName=*/ "No-Op Tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "tokenize", "algo", "identity"), List.of("Anant"), List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "Identity ReIdenitfy",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "reidentify", "algo", "identity"), List.of("Anant"), List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "Base64 Tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "tokenize", "algo", "base64"), List.of("Anant"), List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("QW5hbnQ=", "RGFtbGU="), null)
-        },
-        new Object[] {
-          /*testName=*/ "Base64 ReIdentify",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "reidentify", "algo", "base64"),
-              List.of("QW5hbnQ="),
-              List.of("RGFtbGU=")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128-ECB Tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode", "tokenize",
-                  "algo", "aes",
-                  "aes-cipher-type", "AES/ECB/PKCS5PADDING"),
-              List.of("Anant"),
-              List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(
-              List.of("nrUwN61laFc115jyyQHmng==", "JCKtXkM8spJLyZdAqZKf/g=="), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128-ECB ReIdentify",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode", "reidentify", "algo", "aes", "aes-cipher-type", "AES/ECB/PKCS5PADDING"),
-              List.of("nrUwN61laFc115jyyQHmng=="),
-              List.of("JCKtXkM8spJLyZdAqZKf/g==")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128 (default: CBC) Tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "tokenize", "algo", "aes"), List.of("Anant"), List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(
-              List.of("VhxcfvLBLRy8ag4DVl+7yQ==", "vjVNUHd2cpR0S8XLqhR+VQ=="), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128 (default: CBC) pro ReIdentify",
-          /*testRequestJson=*/ testRequest(
-              Map.of("mode", "reidentify", "algo", "aes"),
-              List.of("VhxcfvLBLRy8ag4DVl+7yQ=="),
-              List.of("vjVNUHd2cpR0S8XLqhR+VQ==")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128 CBC User provided ivParameter Tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode",
-                  "tokenize",
-                  "algo",
-                  "aes",
-                  "aes-iv-parameter-base64",
-                  "VGhpc0lzVGVzdFZlY3Rvcg=="),
-              List.of("Anant"),
-              List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(
-              List.of("8MWXmtCTjwOlpBopOGQZfg==", "m3XXwCieBwdWi700D9yZdg=="), null)
-        },
-        new Object[] {
-          /*testName=*/ "AES128 CBC User provided ivParameter ReIdentify",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode",
-                  "reidentify",
-                  "algo",
-                  "aes",
-                  "aes-iv-parameter-base64",
-                  "VGhpc0lzVGVzdFZlY3Rvcg=="),
-              List.of("8MWXmtCTjwOlpBopOGQZfg=="),
-              List.of("m3XXwCieBwdWi700D9yZdg==")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        },
-        new Object[] {
-          /*testName=*/ "DLP tokenize",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode",
-                  "tokenize",
-                  "algo",
-                  "dlp",
-                  "dlp-deid-template",
-                  "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1"),
-              List.of("Anant"),
-              List.of("Damle")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("QW5hbnQ=", "RGFtbGU="), null)
-        },
-        new Object[] {
-          /*testName=*/ "DLP reidentify",
-          /*testRequestJson=*/ testRequest(
-              Map.of(
-                  "mode",
-                  "reidentify",
-                  "algo",
-                  "dlp",
-                  "dlp-deid-template",
-                  "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1"),
-              List.of("QW5hbnQ="),
-              List.of("RGFtbGU=")),
-          /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null)
-        });
+  public static ImmutableList<Object[]> testParameters() throws IOException {
+
+    var base64Stub =
+        new Base64EncodingDlpStub(ImmutableSet.of("bqfnvalue"), "test-project-id", "test-region1");
+
+    return ImmutableList.<Object[]>builder()
+        .add(
+            new Object[] {
+              /*testName=*/ "No-Op Tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "tokenize", "algo", "identity"),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "Identity ReIdenitfy",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "reidentify", "algo", "identity"),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "Base64 Tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "tokenize", "algo", "base64"), List.of("Anant"), List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("QW5hbnQ=", "RGFtbGU="), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "Base64 ReIdentify",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "reidentify", "algo", "base64"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128-ECB Tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode", "tokenize",
+                      "algo", "aes",
+                      "aes-cipher-type", "AES/ECB/PKCS5PADDING"),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("nrUwN61laFc115jyyQHmng==", "JCKtXkM8spJLyZdAqZKf/g=="), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128-ECB ReIdentify",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "aes",
+                      "aes-cipher-type",
+                      "AES/ECB/PKCS5PADDING"),
+                  List.of("nrUwN61laFc115jyyQHmng=="),
+                  List.of("JCKtXkM8spJLyZdAqZKf/g==")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128 (default: CBC) Tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "tokenize", "algo", "aes"), List.of("Anant"), List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("VhxcfvLBLRy8ag4DVl+7yQ==", "vjVNUHd2cpR0S8XLqhR+VQ=="), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128 (default: CBC) pro ReIdentify",
+              /*testRequestJson=*/ testRequest(
+                  Map.of("mode", "reidentify", "algo", "aes"),
+                  List.of("VhxcfvLBLRy8ag4DVl+7yQ=="),
+                  List.of("vjVNUHd2cpR0S8XLqhR+VQ==")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128 CBC User provided ivParameter Tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "tokenize",
+                      "algo",
+                      "aes",
+                      "aes-iv-parameter-base64",
+                      "VGhpc0lzVGVzdFZlY3Rvcg=="),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("8MWXmtCTjwOlpBopOGQZfg==", "m3XXwCieBwdWi700D9yZdg=="), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "AES128 CBC User provided ivParameter ReIdentify",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "aes",
+                      "aes-iv-parameter-base64",
+                      "VGhpc0lzVGVzdFZlY3Rvcg=="),
+                  List.of("8MWXmtCTjwOlpBopOGQZfg=="),
+                  List.of("m3XXwCieBwdWi700D9yZdg==")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of()
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP tokenize",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "tokenize",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1"),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("QW5hbnQ=", "RGFtbGU="), null),
+              /*factories=*/ List.of(base64Stub.deidentifyFactory(), base64Stub.reidentifyFactory())
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP reidentify Single Surrogate",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of(
+                  base64Stub.deidentifyFactory(),
+                  MappingDeidentifyTemplateCallerFactory.using(
+                      Map.of(
+                          "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1",
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_info_type_transform_deid_template.json"),
+                              DeidentifyTemplate.class))),
+                  new VerifyingReidentifyCallerFactory(
+                      jsonToProto(
+                          loadResourceAsString(
+                              "single_surrogate_info_type_transform_reid_request.json"),
+                          ReidentifyContentRequest.class),
+                      null,
+                      base64Stub.reidentifyFactory()))
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP reidentify Record Transform Two Surrogates",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of(
+                  base64Stub.deidentifyFactory(),
+                  MappingDeidentifyTemplateCallerFactory.using(
+                      Map.of(
+                          "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2",
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "multiple_surrogate_record_info_type_transforms_deid_config.json"),
+                              DeidentifyTemplate.class))),
+                  new VerifyingReidentifyCallerFactory(
+                      jsonToProto(
+                          loadResourceAsString(
+                              "multiple_surrogate_record_info_type_reid_request.json"),
+                          ReidentifyContentRequest.class),
+                      null,
+                      base64Stub.reidentifyFactory()))
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP reidentify Record Transform Primitive",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of(
+                  base64Stub.deidentifyFactory(),
+                  MappingDeidentifyTemplateCallerFactory.using(
+                      Map.of(
+                          "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2",
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_record_primitive_type_transform_deid_template.json"),
+                              DeidentifyTemplate.class))),
+                  new VerifyingReidentifyCallerFactory(
+                      jsonToProto(
+                          loadResourceAsString(
+                              "single_surrogate_record_primitive_type_transform_reid_request.json"),
+                          ReidentifyContentRequest.class),
+                      null,
+                      base64Stub.reidentifyFactory()))
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP reidentify Unsupported Transformation",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  null, "Unsupported ReId Primitive Transform CRYPTO_HASH_CONFIG"),
+              /*factories=*/ List.of(
+                  base64Stub.deidentifyFactory(),
+                  MappingDeidentifyTemplateCallerFactory.using(
+                      Map.of(
+                          "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2",
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "non_reversabe_transformation_deid_template.json"),
+                              DeidentifyTemplate.class))))
+            })
+        .build();
   }
 
   @TestConfiguration
   @Profile("test")
   public static class TestDlpClientFactoryConfiguration {
+    private List<ApiFutureFactory<?, ?>> factories;
 
     @Bean
-    public DlpClientFactory base64DlpClientFactory() {
-      return () ->
-          DlpServiceClient.create(
-              new Base64EncodingDlpStub(
-                  ImmutableSet.of("bqfnvalue"), "test-project-id", "test-region1"));
+    public DlpClientFactory testDlpClientFactory() {
+      return () -> DlpServiceClient.create(PatchyDlpStub.using(factories));
+    }
+  }
+
+  private static String loadResourceAsString(String sourcePath) throws IOException {
+    try (var reader =
+        new BufferedReader(
+            new InputStreamReader(
+                Resources.getResource(sourcePath).openStream(), StandardCharsets.UTF_8))) {
+      return reader.lines().collect(Collectors.joining("\n"));
     }
   }
 }

@@ -19,6 +19,9 @@ package com.google.cloud.solutions.bqremoteencryptionfn.testing;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Message;
+import com.google.protobuf.util.JsonFormat;
 
 public final class JsonMapper {
 
@@ -26,8 +29,12 @@ public final class JsonMapper {
 
   public static <T> String toJson(T obj) {
     try {
+      if (obj instanceof Message proto) {
+        return JsonFormat.printer().print(proto);
+      }
+
       return jsonMapper.writeValueAsString(obj);
-    } catch (JsonProcessingException e) {
+    } catch (InvalidProtocolBufferException | JsonProcessingException e) {
       return "";
     }
   }
@@ -37,6 +44,17 @@ public final class JsonMapper {
       return jsonMapper.readValue(json, clazz);
     } catch (JsonProcessingException e) {
       return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked") // Use of generics for creation of Proto message from JSON.
+  public static <T extends Message> T jsonToProto(String json, Class<T> protoClazz) {
+    try {
+      var builder = (Message.Builder) protoClazz.getMethod("newBuilder").invoke(null);
+      JsonFormat.parser().merge(json, builder);
+      return (T) builder.build();
+    } catch (Exception exception) {
+      throw new RuntimeException("error converting\n" + json, exception);
     }
   }
 

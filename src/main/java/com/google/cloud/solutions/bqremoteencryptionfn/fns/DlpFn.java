@@ -25,12 +25,9 @@ import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFn;
 import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFnFactory;
 import com.google.common.flogger.GoogleLogger;
 import com.google.privacy.dlp.v2.ContentItem;
-import com.google.privacy.dlp.v2.DeidentifyConfig;
 import com.google.privacy.dlp.v2.DeidentifyContentRequest;
 import com.google.privacy.dlp.v2.FieldId;
-import com.google.privacy.dlp.v2.ReidentifyContentRequest;
 import com.google.privacy.dlp.v2.Table;
-import com.google.privacy.dlp.v2.TransformationErrorHandling;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -125,22 +122,14 @@ public final class DlpFn extends UnaryStringArgFn {
 
       var table = tableFn.apply(rows);
 
+      var deidentifyConfig =
+          dlpClient.getDeidentifyTemplate(deidTemplateName).getDeidentifyConfig();
+
       var reidRequest =
-          ReidentifyContentRequest.newBuilder()
+          DlpReIdRequestMaker.forConfig(deidentifyConfig)
+              .makeRequest(ContentItem.newBuilder().setTable(table))
+              .toBuilder()
               .setParent(extractDlpParent(deidTemplateName))
-              .setReidentifyTemplateName(deidTemplateName)
-              // Configuration to Leave Untransformed elements that do not conform to the Deidentify
-              // Template.
-              .setReidentifyConfig(
-                  DeidentifyConfig.newBuilder()
-                      .setTransformationErrorHandling(
-                          TransformationErrorHandling.newBuilder()
-                              .setLeaveUntransformed(
-                                  TransformationErrorHandling.LeaveUntransformed.newBuilder()
-                                      .build())
-                              .build())
-                      .build())
-              .setItem(ContentItem.newBuilder().setTable(table).build())
               .build();
 
       logger.atInfo().log(

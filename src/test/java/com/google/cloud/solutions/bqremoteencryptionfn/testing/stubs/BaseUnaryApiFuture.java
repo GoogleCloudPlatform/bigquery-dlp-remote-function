@@ -18,12 +18,30 @@ package com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs;
 
 
 import com.google.api.core.ApiFuture;
+import com.google.api.gax.rpc.ApiCallContext;
 import java.io.Serializable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-public abstract class BaseUnaryApiFuture<T> implements ApiFuture<T>, Serializable {
+public abstract class BaseUnaryApiFuture<ResponseT> implements ApiFuture<ResponseT>, Serializable {
+
+  public abstract static class ApiFutureFactory<RequestT, ResponseT> implements Serializable {
+
+    private final Class<RequestT> requestClass;
+    private final Class<ResponseT> responseClass;
+
+    public ApiFutureFactory(Class<RequestT> requestClass, Class<ResponseT> responseClass) {
+      this.requestClass = requestClass;
+      this.responseClass = responseClass;
+    }
+
+    public abstract BaseUnaryApiFuture<ResponseT> create(RequestT request, ApiCallContext context);
+
+    public final boolean matchIO(Class<?> requestClass, Class<?> responseClass) {
+      return (this.requestClass.equals(requestClass) && this.responseClass.equals(responseClass));
+    }
+  }
 
   @Override
   public final void addListener(Runnable runnable, Executor executor) {
@@ -47,7 +65,8 @@ public abstract class BaseUnaryApiFuture<T> implements ApiFuture<T>, Serializabl
 
   @Override
   @SuppressWarnings("NullableProblems")
-  public final T get(long l, TimeUnit timeUnit) throws ExecutionException, InterruptedException {
+  public final ResponseT get(long l, TimeUnit timeUnit)
+      throws ExecutionException, InterruptedException {
     return get();
   }
 }

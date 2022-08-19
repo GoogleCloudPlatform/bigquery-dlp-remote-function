@@ -100,6 +100,7 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
        SELECT
         pii_column,
         fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
+        fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
         fns.aes128ecb_encrypt(pii_column) AS aes_ecb_encrypted,
         fns.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_ecb_decrypted,
         fns.aes128cbc_encrypt(pii_column) AS aes_cbc_encrypted,
@@ -313,8 +314,9 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
 
 #### Create DLP Remote functions
 
-1.  Create DLP tokenization function:
+Create DLP functions:
 
+1.  Tokenization
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
@@ -322,6 +324,17 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
     RETURNS STRING
     REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-bq-tokenize-fn\`
     OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
+    ```
+
+1.  ReIdentification
+
+    ```shell
+    bq query --project_id ${PROJECT_ID} \
+    --use_legacy_sql=false \
+    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(v STRING)
+    RETURNS STRING
+    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-bq-tokenize-fn\`
+    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
     ```
 
 
@@ -335,6 +348,7 @@ Execute the following query to observe that the remote function is tokenizing an
     SELECT
         pii_column,
         fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
+        fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
         fns.aes128ecb_encrypt(pii_column) AS aes_encrypted,
         fns.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_decrypted
     FROM

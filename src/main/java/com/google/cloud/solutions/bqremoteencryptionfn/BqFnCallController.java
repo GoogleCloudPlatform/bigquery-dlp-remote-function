@@ -19,6 +19,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.IdentityFn;
+import com.google.common.flogger.GoogleLogger;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class BqFnCallController {
+
+  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   public static final String CALL_MODE_KEY = "mode";
   public static final String TOKENIZE_ALGO_KEY = "algo";
@@ -64,6 +67,7 @@ public class BqFnCallController {
 
       return BigQueryRemoteFnResponse.withReplies(replies);
     } catch (Exception exp) {
+      logger.atInfo().withCause(exp).log("error processing request");
       return BigQueryRemoteFnResponse.withErrorMessage(exp.getMessage());
     }
   }
