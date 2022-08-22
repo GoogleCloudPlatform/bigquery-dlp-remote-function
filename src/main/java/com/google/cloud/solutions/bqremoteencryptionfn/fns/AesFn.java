@@ -17,8 +17,7 @@
 package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
 
-import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFn;
-import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFnFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.BaseEncoding;
 import java.nio.charset.StandardCharsets;
@@ -50,7 +49,7 @@ public final class AesFn extends UnaryStringArgFn {
 
   @Component
   @PropertySource("classpath:aes.properties")
-  public static class AesTokenizeFnFactory implements TokenizeFnFactory<TokenizeFn> {
+  public static class AesTransformFnFactory implements TransformFnFactory<AesFn> {
 
     @Value("${aesKey}")
     private String aesKeyString;
@@ -70,7 +69,7 @@ public final class AesFn extends UnaryStringArgFn {
     }
 
     @Override
-    public TokenizeFn createFn(Map<String, String> options) {
+    public AesFn createFn(Map<String, String> options) {
       return new AesFn(
           aesKeyString,
           aesKeyType,
@@ -95,7 +94,7 @@ public final class AesFn extends UnaryStringArgFn {
   }
 
   @Override
-  public List<String> tokenizeUnaryRow(List<String> rows) throws Exception {
+  public List<String> deidentifyUnaryRow(List<String> rows) throws Exception {
     var encryptCipher = makeCipher(Cipher.ENCRYPT_MODE);
 
     var encoder = Base64.getEncoder();
@@ -110,7 +109,7 @@ public final class AesFn extends UnaryStringArgFn {
   }
 
   @Override
-  public List<String> reIdentifyUnaryRow(List<String> rows) throws Exception {
+  public List<String> reidentifyUnaryRow(List<String> rows) throws Exception {
 
     var decryptCipher = makeCipher(Cipher.DECRYPT_MODE);
 

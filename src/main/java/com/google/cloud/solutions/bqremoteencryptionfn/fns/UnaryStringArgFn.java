@@ -18,30 +18,30 @@ package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFn;
+import com.google.cloud.solutions.bqremoteencryptionfn.TransformFn;
 import java.util.List;
 
 /**
- * Base class for transform functions that take a single argument for tokenize and reIdentify
+ * Base class for transform functions that take a single argument for deidentify and reidentify
  * operations.
  */
-public abstract class UnaryStringArgFn implements TokenizeFn {
+public abstract class UnaryStringArgFn implements TransformFn {
 
   @Override
-  public final List<String> tokenize(List<List<Object>> rows) throws Exception {
-    return tokenizeUnaryRow(makeUnaryArgumentRow(rows));
+  public final List<String> deidentify(List<List<Object>> rows) throws Exception {
+    return deidentifyUnaryRow(makeUnaryArgumentRow(rows));
   }
 
   @Override
-  public final List<String> reIdentify(List<List<Object>> rows) throws Exception {
-    return reIdentifyUnaryRow(makeUnaryArgumentRow(rows));
+  public final List<String> reidentify(List<List<Object>> rows) throws Exception {
+    return reidentifyUnaryRow(makeUnaryArgumentRow(rows));
   }
 
   private List<String> makeUnaryArgumentRow(List<List<Object>> calledRows) {
     return calledRows.stream().map(r -> r.get(0)).map(Object::toString).collect(toImmutableList());
   }
 
-  protected abstract List<String> tokenizeUnaryRow(List<String> rows) throws Exception;
+  protected abstract List<String> deidentifyUnaryRow(List<String> rows) throws Exception;
 
-  protected abstract List<String> reIdentifyUnaryRow(List<String> rows) throws Exception;
+  protected abstract List<String> reidentifyUnaryRow(List<String> rows) throws Exception;
 }

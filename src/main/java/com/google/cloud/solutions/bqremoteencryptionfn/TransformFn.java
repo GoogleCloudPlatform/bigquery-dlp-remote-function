@@ -20,32 +20,32 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 import java.util.List;
 
 /** Interface describing a general contract for any tokenization algorithm. */
-public interface TokenizeFn {
+public interface TransformFn {
 
   /**
-   * Returns Tokenized/Encrypted list of strings for the provided list of messages using the
+   * Returns Deidentified/Encrypted list of strings for the provided list of messages using the
    * specific tokenization technique. The order of output should be the same as the order of input.
    *
    * @param rows UTF-8 encoded message strings
-   * @return the tokenized list of messages in the same order as input.
+   * @return the deidentified list of messages in the same order as input.
    * @throws Exception when any exception occours in tokenization.
    */
-  List<String> tokenize(List<List<Object>> rows) throws Exception;
+  List<String> deidentify(List<List<Object>> rows) throws Exception;
 
   /**
-   * Returns ReIdentified/Decrypted list of strings for the provided list of encrypted messages
+   * Returns Reidentified/Decrypted list of strings for the provided list of encrypted messages
    * using the specific tokenization technique. The order of output should be the same as the order
    * of input.
    *
-   * @param rows UTF-8 encoded encryted message strings
+   * @param rows UTF-8 encoded encrypted message strings
    * @return the ReIdentified/Decrypted list of messages in the same order as input.
-   * @throws Exception when any exception occours or the input messages are not in the same
+   * @throws Exception when any exception occurs or the input messages are not in the same
    *     encryption format.
    */
-  List<String> reIdentify(List<List<Object>> rows) throws Exception;
+  List<String> reidentify(List<List<Object>> rows) throws Exception;
 
   /**
-   * Returns the name of the encrption algorithm implemented. Needs to be unique for all loaded
+   * Returns the name of the encryption algorithm implemented. Needs to be unique for all loaded
    * function classes.
    */
   String getName();

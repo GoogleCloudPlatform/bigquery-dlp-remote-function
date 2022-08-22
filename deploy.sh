@@ -27,7 +27,7 @@ PROJECT_ID=""
 # Refer to https://cloud.google.com/compute/docs/regions-zones#available
 REGION=""
 
-CLOUD_RUN_SERVICE_NAME="bq-tokenize-fns"
+CLOUD_RUN_SERVICE_NAME="bq-transform-fns"
 
 BQ_FUNCTION_DATASET="fns"
 
@@ -84,9 +84,9 @@ gcloud secrets create ${CLOUD_SECRET_IV_NAME} \
 --project="${PROJECT_ID}"
 
 
-echo "Grant Secret Accessor to Cloud Run Service Acco"
-
-COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format json | jq -r '.[] | select(.displayName="Default compute service account") | .email')"
+echo "Grant Secret Accessor to Cloud Run Service Account"
+PROJECT_NUMBER="$(gcloud projects list --filter="${PROJECT_ID}" --format="value(PROJECT_NUMBER)")"
+COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format="get(email)" | grep "${PROJECT_NUMBER}-compute@")"
 
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 --member="serviceAccount:${COMPUTE_ENGINE_SA}" \
@@ -117,13 +117,13 @@ gcloud beta run deploy ${CLOUD_RUN_SERVICE_NAME} \
 
 echo "Extracting Cloud Run Endpoint URL"
 
-RUN_URL="$(gcloud run services describe ${CLOUD_RUN_SERVICE_NAME} --region ${REGION} --project ${PROJECT_ID} --format json | jq -r '.status.address.url')"
+RUN_URL="$(gcloud run services describe ${CLOUD_RUN_SERVICE_NAME} --region ${REGION} --project ${PROJECT_ID} --format="get(status.address.url)")"
 echo "Found Endpoint: ${RUN_URL}"
 
 echo "Create BigQuery Connection"
 
 bq mk --connection \
---display_name='External Tokenization Function Connection' \
+--display_name='External Transformation Function Connection' \
 --connection_type=CLOUD_RESOURCE \
 --project_id="${PROJECT_ID}" \
 --location="${REGION}" \
@@ -154,7 +154,7 @@ echo "Base64 Functions"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_encode64(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','base64')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','base64')]);"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_decode64(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`   
@@ -165,7 +165,7 @@ echo "Creating AES Functions"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','aes'),('aes-cipher-type','AES/ECB/PKCS5PADDING')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes'),('aes-cipher-type','AES/ECB/PKCS5PADDING')]);"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
@@ -173,14 +173,14 @@ OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify')
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','aes'),('aes-cipher-type','AES/CBC/PKCS5PADDING'),('aes-iv-parameter-base64','VGhpc0lzVGVzdFZlY3Rvcg==')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes'),('aes-cipher-type','AES/CBC/PKCS5PADDING'),('aes-iv-parameter-base64','VGhpc0lzVGVzdFZlY3Rvcg==')]);"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','aes'),('aes-cipher-type','AES/CBC/PKCS5PADDING'),('aes-iv-parameter-base64','VGhpc0lzVGVzdFZlY3Rvcg==')]);"
 
 
-echo "Creating DLP DeIdentify Template"
+echo "Creating DLP Deidentify Template"
 DEID_TEMPLATE=$(curl -X POST \
 -H "Authorization: Bearer $(gcloud auth print-access-token)" \
 -H "Accept: application/json" \
@@ -197,13 +197,13 @@ echo "Creating DLP Functions"
 
 bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
 
 bq query --project_id ${PROJECT_ID} \
 --use_legacy_sql=false \
 "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(v STRING)
 RETURNS STRING
-REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-bq-tokenize-fn\`
+REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
 
 echo "All Resources Created."

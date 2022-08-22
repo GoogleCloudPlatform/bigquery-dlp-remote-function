@@ -31,6 +31,7 @@ import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.PatchyD
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.VerifyingReidentifyCallerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.flogger.GoogleLogger;
 import com.google.common.io.Resources;
 import com.google.privacy.dlp.v2.DeidentifyTemplate;
 import com.google.privacy.dlp.v2.ReidentifyContentRequest;
@@ -63,10 +64,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @RunWith(Parameterized.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@Import(BqTokenizeFnAppTest.TestDlpClientFactoryConfiguration.class)
+@Import(BqTransformFnAppTest.TestDlpClientFactoryConfiguration.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public final class BqTokenizeFnAppTest {
+public final class BqTransformFnAppTest {
+
+  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   static {
     System.setProperty("AES_KEY", "2lDNBd0hHgCZ+1/P+fWO+g==");
@@ -84,7 +87,7 @@ public final class BqTokenizeFnAppTest {
 
   private final List<ApiFutureFactory<?, ?>> factories;
 
-  public BqTokenizeFnAppTest(
+  public BqTransformFnAppTest(
       String testCaseName,
       String testRequestJson,
       BigQueryRemoteFnResponse expectedResult,
@@ -92,6 +95,8 @@ public final class BqTokenizeFnAppTest {
     this.testRequestJson = testRequestJson;
     this.expectedResult = expectedResult;
     this.factories = factories;
+
+    logger.atInfo().log("Starting Testcase: %s", testCaseName);
   }
 
   @Before
@@ -122,9 +127,9 @@ public final class BqTokenizeFnAppTest {
     return ImmutableList.<Object[]>builder()
         .add(
             new Object[] {
-              /*testName=*/ "No-Op Tokenize",
+              /*testName=*/ "No-Op Deidentify",
               /*testRequestJson=*/ testRequest(
-                  Map.of("mode", "tokenize", "algo", "identity"),
+                  Map.of("mode", "deidentify", "algo", "identity"),
                   List.of("Anant"),
                   List.of("Damle")),
               /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
@@ -142,9 +147,11 @@ public final class BqTokenizeFnAppTest {
             })
         .add(
             new Object[] {
-              /*testName=*/ "Base64 Tokenize",
+              /*testName=*/ "Base64 Deidentify",
               /*testRequestJson=*/ testRequest(
-                  Map.of("mode", "tokenize", "algo", "base64"), List.of("Anant"), List.of("Damle")),
+                  Map.of("mode", "deidentify", "algo", "base64"),
+                  List.of("Anant"),
+                  List.of("Damle")),
               /*expectedResult=*/ new BigQueryRemoteFnResponse(
                   List.of("QW5hbnQ=", "RGFtbGU="), null),
               /*factories=*/ List.of()
@@ -161,10 +168,10 @@ public final class BqTokenizeFnAppTest {
             })
         .add(
             new Object[] {
-              /*testName=*/ "AES128-ECB Tokenize",
+              /*testName=*/ "AES128-ECB Deidentify",
               /*testRequestJson=*/ testRequest(
                   Map.of(
-                      "mode", "tokenize",
+                      "mode", "deidentify",
                       "algo", "aes",
                       "aes-cipher-type", "AES/ECB/PKCS5PADDING"),
                   List.of("Anant"),
@@ -191,9 +198,9 @@ public final class BqTokenizeFnAppTest {
             })
         .add(
             new Object[] {
-              /*testName=*/ "AES128 (default: CBC) Tokenize",
+              /*testName=*/ "AES128 (default: CBC) Deidentify",
               /*testRequestJson=*/ testRequest(
-                  Map.of("mode", "tokenize", "algo", "aes"), List.of("Anant"), List.of("Damle")),
+                  Map.of("mode", "deidentify", "algo", "aes"), List.of("Anant"), List.of("Damle")),
               /*expectedResult=*/ new BigQueryRemoteFnResponse(
                   List.of("VhxcfvLBLRy8ag4DVl+7yQ==", "vjVNUHd2cpR0S8XLqhR+VQ=="), null),
               /*factories=*/ List.of()
@@ -210,11 +217,11 @@ public final class BqTokenizeFnAppTest {
             })
         .add(
             new Object[] {
-              /*testName=*/ "AES128 CBC User provided ivParameter Tokenize",
+              /*testName=*/ "AES128 CBC User provided ivParameter Deidentify",
               /*testRequestJson=*/ testRequest(
                   Map.of(
                       "mode",
-                      "tokenize",
+                      "deidentify",
                       "algo",
                       "aes",
                       "aes-iv-parameter-base64",
@@ -243,11 +250,11 @@ public final class BqTokenizeFnAppTest {
             })
         .add(
             new Object[] {
-              /*testName=*/ "DLP tokenize",
+              /*testName=*/ "DLP deidentify",
               /*testRequestJson=*/ testRequest(
                   Map.of(
                       "mode",
-                      "tokenize",
+                      "deidentify",
                       "algo",
                       "dlp",
                       "dlp-deid-template",
@@ -281,13 +288,12 @@ public final class BqTokenizeFnAppTest {
                               loadResourceAsString(
                                   "single_surrogate_info_type_transform_deid_template.json"),
                               DeidentifyTemplate.class))),
-                  new VerifyingReidentifyCallerFactory(
-                      jsonToProto(
-                          loadResourceAsString(
-                              "single_surrogate_info_type_transform_reid_request.json"),
-                          ReidentifyContentRequest.class),
-                      null,
-                      base64Stub.reidentifyFactory()))
+                  VerifyingReidentifyCallerFactory.withExpectedRequest(
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_info_type_transform_reid_request.json"),
+                              ReidentifyContentRequest.class))
+                      .withReidFactory(base64Stub.reidentifyFactory()))
             })
         .add(
             new Object[] {
@@ -312,13 +318,12 @@ public final class BqTokenizeFnAppTest {
                               loadResourceAsString(
                                   "multiple_surrogate_record_info_type_transforms_deid_config.json"),
                               DeidentifyTemplate.class))),
-                  new VerifyingReidentifyCallerFactory(
-                      jsonToProto(
-                          loadResourceAsString(
-                              "multiple_surrogate_record_info_type_reid_request.json"),
-                          ReidentifyContentRequest.class),
-                      null,
-                      base64Stub.reidentifyFactory()))
+                  VerifyingReidentifyCallerFactory.withExpectedRequest(
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "multiple_surrogate_record_info_type_reid_request.json"),
+                              ReidentifyContentRequest.class))
+                      .withReidFactory(base64Stub.reidentifyFactory()))
             })
         .add(
             new Object[] {
@@ -343,13 +348,12 @@ public final class BqTokenizeFnAppTest {
                               loadResourceAsString(
                                   "single_surrogate_record_primitive_type_transform_deid_template.json"),
                               DeidentifyTemplate.class))),
-                  new VerifyingReidentifyCallerFactory(
-                      jsonToProto(
-                          loadResourceAsString(
-                              "single_surrogate_record_primitive_type_transform_reid_request.json"),
-                          ReidentifyContentRequest.class),
-                      null,
-                      base64Stub.reidentifyFactory()))
+                  VerifyingReidentifyCallerFactory.withExpectedRequest(
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_record_primitive_type_transform_reid_request.json"),
+                              ReidentifyContentRequest.class))
+                      .withReidFactory(base64Stub.reidentifyFactory()))
             })
         .add(
             new Object[] {

@@ -20,18 +20,18 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 import java.util.Map;
 import javax.annotation.Nullable;
 
-/** Factory interface for creating objects of a {@link TokenizeFn} implementation. */
-public interface TokenizeFnFactory<T extends TokenizeFn> {
+/** Factory interface for creating objects of a {@link TransformFn} implementation. */
+public interface TransformFnFactory<T extends TransformFn> {
 
   /**
-   * Returns an instance of {@link TokenizeFn} implementation.
+   * Returns an instance of {@link TransformFn} implementation.
    *
    * @param options the implementation specific configuration
    */
   T createFn(@Nullable Map<String, String> options);
 
   /**
-   * Returns the name of the encrption algorithm implemented. Needs to be unique for all loaded
+   * Returns the name of the encryption algorithm implemented. Needs to be unique for all loaded
    * function classes.
    */
   String getFnName();

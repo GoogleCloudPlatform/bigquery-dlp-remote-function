@@ -29,18 +29,24 @@ public class VerifyingReidentifyCallerFactory
     extends ApiFutureFactory<ReidentifyContentRequest, ReidentifyContentResponse> {
 
   private final ReidentifyContentRequest expectedRequest;
-  private final ReidentifyContentResponse providedResponse;
-
   private final ApiFutureFactory<ReidentifyContentRequest, ReidentifyContentResponse> reidFactory;
 
-  public VerifyingReidentifyCallerFactory(
+  private VerifyingReidentifyCallerFactory(
       ReidentifyContentRequest expectedRequest,
-      ReidentifyContentResponse providedResponse,
       ApiFutureFactory<ReidentifyContentRequest, ReidentifyContentResponse> reidFactory) {
     super(ReidentifyContentRequest.class, ReidentifyContentResponse.class);
     this.expectedRequest = expectedRequest;
-    this.providedResponse = providedResponse;
     this.reidFactory = reidFactory;
+  }
+
+  public static VerifyingReidentifyCallerFactory withExpectedRequest(
+      ReidentifyContentRequest expectedRequest) {
+    return new VerifyingReidentifyCallerFactory(expectedRequest, null);
+  }
+
+  public VerifyingReidentifyCallerFactory withReidFactory(
+      ApiFutureFactory<ReidentifyContentRequest, ReidentifyContentResponse> reidFactory) {
+    return new VerifyingReidentifyCallerFactory(expectedRequest, reidFactory);
   }
 
   @Override
@@ -53,9 +59,7 @@ public class VerifyingReidentifyCallerFactory
             .ignoringFields(ReidentifyContentRequest.ITEM_FIELD_NUMBER)
             .isEqualTo(expectedRequest);
 
-        return (providedResponse == null)
-            ? reidFactory.create(request, context).get()
-            : providedResponse;
+        return reidFactory.create(request, context).get();
       }
     };
   }

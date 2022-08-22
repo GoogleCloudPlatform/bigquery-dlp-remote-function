@@ -17,8 +17,7 @@
 package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
 
-import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFn;
-import com.google.cloud.solutions.bqremoteencryptionfn.TokenizeFnFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -29,9 +28,9 @@ public final class IdentityFn extends UnaryStringArgFn {
   public static final String FN_NAME = "identity";
 
   @Component
-  public static class IdentityTokenizeFnFactory implements TokenizeFnFactory<TokenizeFn> {
+  public static class IdentityTransformFnFactory implements TransformFnFactory<IdentityFn> {
     @Override
-    public TokenizeFn createFn(Map<String, String> options) {
+    public IdentityFn createFn(Map<String, String> options) {
       return new IdentityFn();
     }
 
@@ -47,12 +46,12 @@ public final class IdentityFn extends UnaryStringArgFn {
   }
 
   @Override
-  public List<String> tokenizeUnaryRow(List<String> rows) {
+  public List<String> deidentifyUnaryRow(List<String> rows) {
     return rows;
   }
 
   @Override
-  public List<String> reIdentifyUnaryRow(List<String> rows) {
+  public List<String> reidentifyUnaryRow(List<String> rows) {
     return rows;
   }
 }

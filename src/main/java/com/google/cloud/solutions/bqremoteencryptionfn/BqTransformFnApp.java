@@ -29,10 +29,10 @@ import org.springframework.context.annotation.Profile;
 @SpringBootApplication
 @EnableConfigurationProperties
 @Configuration
-public class BqTokenizeFnApp {
+public class BqTransformFnApp {
 
   public static void main(String[] args) {
-    SpringApplication.run(BqTokenizeFnApp.class, args);
+    SpringApplication.run(BqTransformFnApp.class, args);
   }
 
   @Bean
