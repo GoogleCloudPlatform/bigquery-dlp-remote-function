@@ -1,32 +1,32 @@
 # Use custom encryption in BigQuery using Remote Function, Cloud Run and Data Loss Prevention
 
-*Summary: Learn how to use Remote Functions to tokenize data with DLP in BigQuery using SQL.*
+*Summary: Learn how to use Remote Functions to de/re-identify data with DLP in BigQuery using SQL.*
 
 [![Build](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml)
 [![CodeQL](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml)
 [![codecov](https://codecov.io/gh/GoogleCloudPlatform/bigquery-dlp-remote-function/branch/main/graph/badge.svg?token=B25A0dD36P)](https://codecov.io/gh/GoogleCloudPlatform/bigquery-dlp-remote-function)
 
-This document discusses how to detect and tokenize sensitive data like personally identifiable information (PII) in
+This document discusses how to detect and de-identify sensitive data like personally identifiable information (PII) in
 BigQuery tables with simple SQL based functions, using Cloud Data Loss Prevention
 [(Cloud DLP)](https://cloud.google.com/dlp). De-identification techniques like encryption lets you preserve the utility
-of your data for joining or analytics while reducing the risk of handling the data by tokenizing/obfuscating the raw
+of your data for joining or analytics while reducing the risk of handling the data by de-identifying/obfuscating the raw
 sensitive identifiers.
 
-Enterprises may have policy or regulatory requirements to only store tokenized data in their DataWarehouses, and a need
-to quickly reidentify the tokenized data for reports generation. To minimize the risk of handling large volumes of
+Enterprises may have policy or regulatory requirements to only store de-identified data in their DataWarehouses, and a need
+to quickly re-identify the de-identify data for reports generation. To minimize the risk of handling large volumes of
 sensitive data, you can use an
 [automated data transformation pipeline](https://github.com/GoogleCloudPlatform/auto-data-tokenize) to create
 de-identified datasets that can be used for migrating from on-premises to cloud. You can use this project to either
-replace that pipeline with a SQL query for de-identification and quick reidentification or only for reidentification.
+replace that pipeline with a SQL query for de-identification and quick re-identification or only for re-identification.
 
 Cloud DLP can inspect the data for sensitive information when the dataset has not been characterized, by using
-[more than 100 built-in classifiers](https://cloud.google.com/dlp/docs/infotypes-reference). Using DLP to tokenize the
+[more than 100 built-in classifiers](https://cloud.google.com/dlp/docs/infotypes-reference). Using DLP to de-identify the
 data requires complex data pipelines/applications. This solution aims to help your data analysts/engineers/scientists
-to achieve the same outcome throught Simple SQL functions using
+to achieve the same outcome through Simple SQL functions using
 BigQuery [Remote Functions](https://cloud.google.com/blog/products/data-analytics/extending-bigquery-functions) which
 are a powerful way to extend the functionality of BigQuery.
 
-This document demonstrates a reference implementation of tokenizing structured data in
+This document demonstrates a reference implementation of de-identifying structured data in
 [BigQuery](https://cloud.google.com/bigquery) using DLP and remote function
 (hosted on [Cloud Run](https://cloud.google.com/run)).
 
@@ -36,8 +36,8 @@ expert and run simple shell and SQL scripts.
 
 ## Objectives
 
-* Deploy Cloud Run service providing DLP based tokenization functionality
-* Create BigQuery Remote functions that use DLP deidentify templates
+* Deploy Cloud Run service providing DLP based encryption functionality
+* Create BigQuery Remote functions that use DLP de-identify templates
 * Verify data encryption in BigQuery using a SQL query
 
 ## Costs
@@ -105,8 +105,6 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
         pii_column,
         fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
         fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-        fns.aes128ecb_encrypt(pii_column) AS aes_ecb_encrypted,
-        fns.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_ecb_decrypted,
         fns.aes128cbc_encrypt(pii_column) AS aes_cbc_encrypted,
         fns.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_cbc_decrypted
         FROM
@@ -144,7 +142,7 @@ In case you want to customize the deployment, please use following steps:
     ```shell
     PROJECT_ID="<PROJECT_ID>"
     REGION="<REGION_ID>"
-    CLOUD_RUN_SERVICE_NAME="bq-tokenize-fns"
+    CLOUD_RUN_SERVICE_NAME="bq-transform-fns"
     CLOUD_SECRET_KEY_NAME="${CLOUD_RUN_SERVICE_NAME}-aes-key"
     CLOUD_SECRET_IV_NAME="${CLOUD_RUN_SERVICE_NAME}-iv"
     ```
@@ -186,7 +184,8 @@ the AES Encryption key.
 
 1.  Enable Compute Engine Service account to access Cloud Secrets
     ```shell
-    COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format json | jq '.[] | select(.displayName="Default compute service account") | .name')"
+    PROJECT_NUMBER="$(gcloud projects list --filter="${PROJECT_ID}" --format="value(PROJECT_NUMBER)")"
+    COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format="get(email)" --project "${PROJECT_ID}" | grep "${PROJECT_NUMBER}-compute@")"
     gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --member="serviceAccount:${COMPUTE_ENGINE_SA}" \
     --role='roles/secretmanager.secretAccessor'
@@ -215,15 +214,17 @@ the AES Encryption key.
     --project ${PROJECT_ID}
     ```
 
-    > **Note:** The application uses following defaults for AES encryption: You can change this behaviour by either
+    > **Note:** The application uses following defaults for AES encryption:
+    > You can change this behaviour by either
     > changing the ENV variables or `src/main/resources/aes.properties`
+    >
     > `AES_KEY_TYPE` : `BASE64_KEY`
     > `AES_CIPHER_TYPE` : `AES/CBC/PKCS5PADDING`
 
 1.  Retrieve and save the Cloud Run URL:
 
     ```shell
-    RUN_URL="$(gcloud run services describe ${CLOUD_RUN_SERVICE_NAME} --region ${REGION} --project ${PROJECT_ID} --format json | jq '.status.address.url')"
+    RUN_URL="$(gcloud run services describe ${CLOUD_RUN_SERVICE_NAME} --region ${REGION} --project ${PROJECT_ID} --format="get(status.address.url)")"
     ```
 
 ### Create DLP Didentify Templates
@@ -242,7 +243,8 @@ DEID_TEMPLATE=$(curl -X POST \
 DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
 ```
 
-> **Note:** Recommended practice is to use KMS Wrapped Key for DLP encryption.
+> **Note:** Recommended practice is to use
+> [KMS Wrapped Key for DLP de-identification](https://cloud.google.com/dlp/docs/create-wrapped-key).
 >
 > This document uses unwrapped key for simplification of demo purpose.
 
@@ -252,7 +254,7 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
 
     ```shell
     bq mk --connection \
-    --display_name='External Tokenization Function Connection' \
+    --display_name='External transform function connection' \
     --connection_type=CLOUD_RESOURCE \
     --project_id="${PROJECT_ID}" \
     --location="${REGION}" \
@@ -294,23 +296,23 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
 
 #### Create AES Remote functions
 
-1.  Create AES tokenization function:
+1.  Create AES de-identification function:
 
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
-    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(v STRING)
+    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(v STRING)
     RETURNS STRING
     REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','aes')]);"
+    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes')]);"
     ```
 
-1.  Create AES Reidentify function:
+1.  Create AES re-identify function:
 
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
-    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(v STRING)
+    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(v STRING)
     RETURNS STRING
     REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
     OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','aes')]);"
@@ -318,33 +320,32 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
 
 #### Create DLP Remote functions
 
-Create DLP functions:
-
-1.  Tokenization
+1.  Create DLP de-identification function:
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
     "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(v STRING)
     RETURNS STRING
-    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-bq-tokenize-fn\`
-    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'tokenize'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
+    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
+    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
     ```
 
-1.  ReIdentification
+1.  Create DLP re-identification function:
 
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
     "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(v STRING)
     RETURNS STRING
-    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-bq-tokenize-fn\`
+    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
     OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
     ```
 
 
-## Verify Tokenization
+## Verify De-identification and Re-identification
 
-Execute the following query to observe that the remote function is tokenizing and reidentifying the data using SQL:
+Execute the following query to observe that the remote function is deidentifying
+and reidentifying the data using SQL:
 
 1.  Using [BigQuery Workspace](https://console.cloud.google.com/bigquery)
 
@@ -353,8 +354,8 @@ Execute the following query to observe that the remote function is tokenizing an
         pii_column,
         fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
         fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-        fns.aes128ecb_encrypt(pii_column) AS aes_encrypted,
-        fns.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_decrypted
+        fns.aes128cbc_encrypt(pii_column) AS aes_encrypted,
+        fns.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_decrypted
     FROM
         UNNEST(
         [
@@ -374,8 +375,8 @@ Execute the following query to observe that the remote function is tokenizing an
       pii_column,
       ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
       ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-      ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(pii_column) AS aes_encrypted,
-      ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_decrypted
+      ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(pii_column) AS aes_encrypted,
+      ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_decrypted
     FROM
       UNNEST(
         [

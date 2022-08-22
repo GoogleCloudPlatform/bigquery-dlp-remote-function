@@ -18,7 +18,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import com.google.cloud.solutions.bqremoteencryptionfn.fns.IdentityFn;
+import com.google.cloud.solutions.bqremoteencryptionfn.fns.IdentityFn.IdentityTransformFnFactory;
 import com.google.common.flogger.GoogleLogger;
 import java.util.List;
 import java.util.Map;
@@ -35,14 +35,14 @@ import org.springframework.web.bind.annotation.RestController;
  *     function HTTP Endpoint</a>
  */
 @RestController
-public class BqFnCallController {
+public class BigQueryFnCallController {
 
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   public static final String CALL_MODE_KEY = "mode";
-  public static final String TOKENIZE_ALGO_KEY = "algo";
+  public static final String TRANSFORM_ALGO_KEY = "algo";
 
-  @Autowired private List<TokenizeFnFactory<TokenizeFn>> tokenizeFnFactories;
+  @Autowired private List<TransformFnFactory<? extends TransformFn>> transformFnFactories;
 
   @PostMapping("/")
   public BigQueryRemoteFnResponse process(@RequestBody BigQueryRemoteFnRequest request) {
@@ -50,19 +50,19 @@ public class BqFnCallController {
       var options =
           checkNotNull(request.userDefinedContext(), "userDefinedContext is required. Found null.");
       var callMode = identifyCallMode(options);
-      var algo = checkNotNull(options.get(TOKENIZE_ALGO_KEY), "Invalid Algorithm. Found null");
+      var algo = checkNotNull(options.get(TRANSFORM_ALGO_KEY), "Invalid Algorithm. Found null");
 
-      var tokenizeFn =
-          tokenizeFnFactories.stream()
+      var transformFn =
+          transformFnFactories.stream()
               .filter(factory -> factory.getFnName().equals(algo))
               .findFirst()
-              .orElseGet(IdentityFn.IdentityTokenizeFnFactory::new)
+              .orElseGet(IdentityTransformFnFactory::new)
               .createFn(options);
 
       var replies =
           switch (callMode) {
-            case TOKENIZE -> tokenizeFn.tokenize(request.calls());
-            case REIDENTIFY -> tokenizeFn.reIdentify(request.calls());
+            case DEIDENTIFY -> transformFn.deidentify(request.calls());
+            case REIDENTIFY -> transformFn.reidentify(request.calls());
           };
 
       return BigQueryRemoteFnResponse.withReplies(replies);
@@ -74,11 +74,11 @@ public class BqFnCallController {
 
   private static CallMode identifyCallMode(Map<String, String> userContext) {
     var callMode = userContext.get(CALL_MODE_KEY);
-    return callMode == null ? CallMode.TOKENIZE : CallMode.valueOf(callMode.toUpperCase());
+    return callMode == null ? CallMode.DEIDENTIFY : CallMode.valueOf(callMode.toUpperCase());
   }
 
   public enum CallMode {
-    TOKENIZE,
+    DEIDENTIFY,
     REIDENTIFY
   }
 }

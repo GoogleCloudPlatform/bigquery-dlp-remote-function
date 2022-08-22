@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.google.cloud.solutions.bqremoteencryptionfn;
+package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.google.cloud.solutions.bqremoteencryptionfn.fns.UnaryStringArgFn;
+import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -35,9 +35,9 @@ public final class Base64Fn extends UnaryStringArgFn {
   public static final String FN_NAME = "base64";
 
   @Component
-  public static class Base64TokenizeFnFactory implements TokenizeFnFactory<TokenizeFn> {
+  public static class Base64TransformFnFactory implements TransformFnFactory<Base64Fn> {
     @Override
-    public TokenizeFn createFn(Map<String, String> options) {
+    public Base64Fn createFn(Map<String, String> options) {
       return new Base64Fn();
     }
 
@@ -53,7 +53,7 @@ public final class Base64Fn extends UnaryStringArgFn {
   }
 
   @Override
-  public ImmutableList<String> tokenizeUnaryRow(List<String> rows) {
+  public ImmutableList<String> deidentifyUnaryRow(List<String> rows) {
     var encoder = Base64.getEncoder();
 
     return rows.stream()
@@ -63,7 +63,7 @@ public final class Base64Fn extends UnaryStringArgFn {
   }
 
   @Override
-  public ImmutableList<String> reIdentifyUnaryRow(List<String> rows) {
+  public ImmutableList<String> reidentifyUnaryRow(List<String> rows) {
     var decoder = Base64.getDecoder();
 
     return rows.stream()

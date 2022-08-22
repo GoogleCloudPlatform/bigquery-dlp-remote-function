@@ -35,16 +35,15 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 public class Base64EncodingDlpStub implements Serializable {
   private final String projectId;
   private final String location;
-  private final Set<String> tokenizeColumnIds;
+  private final Set<String> transformColumnIds;
 
-  public Base64EncodingDlpStub(Set<String> tokenizeColumnIds, String projectId, String location) {
-    this.tokenizeColumnIds = tokenizeColumnIds;
+  public Base64EncodingDlpStub(Set<String> transformColumnIds, String projectId, String location) {
+    this.transformColumnIds = transformColumnIds;
     this.projectId = projectId;
     this.location = location;
   }
@@ -80,7 +79,7 @@ public class Base64EncodingDlpStub implements Serializable {
           ReidentifyContentRequest request, ApiCallContext context) {
         return new BaseUnaryApiFuture<>() {
           @Override
-          public ReidentifyContentResponse get() throws InterruptedException, ExecutionException {
+          public ReidentifyContentResponse get() {
             var actioner =
                 new Base64Actioner(Base64EncodingDlpStub::decodeBase64String, request.getParent());
 
@@ -130,7 +129,7 @@ public class Base64EncodingDlpStub implements Serializable {
                                 headers.stream(),
                                 row.getValuesList().stream(),
                                 (header, value) -> {
-                                  if (tokenizeColumnIds.contains(header.getName())) {
+                                  if (transformColumnIds.contains(header.getName())) {
                                     return elementTransformer.apply(value);
                                   }
                                   return value;
