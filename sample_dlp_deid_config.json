@@ -9,7 +9,23 @@
             "infoTypes": [
               {
                 "name": "EMAIL_ADDRESS"
-              },
+              }
+            ],
+            "primitiveTransformation": {
+              "cryptoDeterministicConfig": {
+                "cryptoKey": {
+                  "unwrapped": {
+                    "key": "VWtYcDJzNXY4eS9CP0UoSCtNYlFlU2hWbVlxM3Q2dzk="
+                  }
+                },
+                "surrogateInfoType": {
+                  "name": "BQ_TRF_EMAIL"
+                }
+              }
+            }
+          },
+          {
+            "infoTypes": [
               {
                 "name": "PHONE_NUMBER"
               }
@@ -22,7 +38,7 @@
                   }
                 },
                 "surrogateInfoType": {
-                  "name": "BQ_TOK_FN"
+                  "name": "BQ_TRF_PH"
                 }
               }
             }

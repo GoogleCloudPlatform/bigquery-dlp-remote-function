@@ -28,7 +28,7 @@ version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '17'
 
 def floggerVersion = "0.7.4"
-def springBootVersion = "2.7.2"
+def springBootVersion = "2.7.3"
 
 configurations {
     compileOnly {
@@ -37,7 +37,8 @@ configurations {
 }
 
 repositories {
-    maven { url 'https://maven-central-asia.storage.googleapis.com/maven2' }
+    mavenLocal()
+    mavenCentral()
 }
 
 dependencies {
@@ -52,7 +53,7 @@ dependencies {
     runtimeOnly "com.google.flogger:flogger-system-backend:${floggerVersion}"
 
     // Google Cloud Service Client Libraries
-    implementation "com.google.cloud:google-cloud-dlp:3.6.3"
+    implementation "com.google.cloud:google-cloud-dlp:3.6.7"
 
     //Spring deps
     implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"

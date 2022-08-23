@@ -53,11 +53,11 @@ AES_IV_PARAMETER_BASE64="$(dd if=/dev/urandom count=1 bs=16 | base64)"
 #################################################
 
 echo "setting Google Cloud Project"
-gcloud config set project ${PROJECT_ID}
+gcloud config set project "${PROJECT_ID}"
 
 echo "Enabling Google Cloud Services."
 
-gcloud services --project ${PROJECT_ID} enable \
+gcloud services --project "${PROJECT_ID}" enable \
 bigquery.googleapis.com \
 bigqueryconnection.googleapis.com \
 cloudbuild.googleapis.com \
@@ -83,14 +83,29 @@ gcloud secrets create ${CLOUD_SECRET_IV_NAME} \
 --replication-policy=user-managed \
 --project="${PROJECT_ID}"
 
+echo "Creating Cloud Run Service Account"
+RUNNER_SA_NAME="${CLOUD_RUN_SERVICE_NAME}-runner-$(dd if=/dev/random count=1 bs=3 | base64)"
+RUNNER_SA_EMAIL="${RUNNER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-echo "Grant Secret Accessor to Cloud Run Service Account"
-PROJECT_NUMBER="$(gcloud projects list --filter="${PROJECT_ID}" --format="value(PROJECT_NUMBER)")"
-COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format="get(email)" | grep "${PROJECT_NUMBER}-compute@")"
+gcloud iam service-accounts create "${RUNNER_SA_NAME}" \
+--project="${PROJECT_ID}" \
+--description "Runner for BigQuery remote function execution" \
+--display-name "${RUNNER_SA_NAME}"
 
+echo "Grant Roles secretmanager.secretAccessor to Cloud Run Service Account"
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
---member="serviceAccount:${COMPUTE_ENGINE_SA}" \
+--member="serviceAccount:${RUNNER_SA_EMAIL}" \
 --role='roles/secretmanager.secretAccessor'
+
+echo "Grant Roles dlp.deidentifyTemplatesReader to Cloud Run Service Account"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+--member="serviceAccount:${RUNNER_SA_EMAIL}" \
+--role='roles/dlp.deidentifyTemplatesReader'
+
+echo "Grant Roles dlp.user to Cloud Run Service Account"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+--member="serviceAccount:${RUNNER_SA_EMAIL}" \
+--role='roles/dlp.user'
 
 echo "Building Code (using Cloud Build)"
 
@@ -107,6 +122,7 @@ gcloud beta run deploy ${CLOUD_RUN_SERVICE_NAME} \
 --execution-environment=gen2 \
 --platform=managed \
 --region="${REGION}" \
+--service-account="${RUNNER_SA_EMAIL}" \
 --update-env-vars=PROJECT_ID=${PROJECT_ID} \
 --update-env-vars=AES_KEY_TYPE=${AES_KEY_TYPE} \
 --update-env-vars=AES_CIPHER_TYPE=${AES_CIPHER_TYPE} \
@@ -131,7 +147,7 @@ ext-${CLOUD_RUN_SERVICE_NAME}
 
 echo "Extracting BigQuery connection Service Account"
 
-CONNECTION_SA="$(bq --project_id ${PROJECT_ID} --format json show --connection ${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME} | jq -r '.cloudResource.serviceAccountId')"
+CONNECTION_SA="$(bq --project_id "${PROJECT_ID}" --format json show --connection "${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}" | jq -r '.cloudResource.serviceAccountId')"
 
 echo "Assigning role/run.invoker for serviceAccount: ${CONNECTION_SA}"
 
@@ -140,42 +156,42 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 --role='roles/run.invoker'
 
 echo "Checking if Function Dataset (${PROJECT_ID}:${BQ_FUNCTION_DATASET}) exists"
-BQ_FN_DATASET_ERROR=$(bq show --project_id ${PROJECT_ID} --dataset ${PROJECT_ID}:${BQ_FUNCTION_DATASET} | grep error)
+BQ_FN_DATASET_ERROR=$(bq show --project_id "${PROJECT_ID}" --dataset "${PROJECT_ID}:${BQ_FUNCTION_DATASET}" | grep error)
 
 if [ "${BQ_FN_DATASET_ERROR}" ]
 then
     echo "Creating Function Dataset (${PROJECT_ID}:${BQ_FUNCTION_DATASET})"
-    bq mk --dataset --project_id ${PROJECT_ID} --location ${REGION} ${BQ_FUNCTION_DATASET}
+    bq mk --dataset --project_id "${PROJECT_ID}" --location "${REGION}" "${BQ_FUNCTION_DATASET}"
 fi
 
 echo "Creating BigQuery Remote Functions"
 
 echo "Base64 Functions"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_encode64(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_encode64(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','base64')]);"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_decode64(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.ext_decode64(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`   
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','base64')]);"
 
 
 echo "Creating AES Functions"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes'),('aes-cipher-type','AES/ECB/PKCS5PADDING')]);"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','aes'),('aes-cipher-type','AES/ECB/PKCS5PADDING')]);"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes'),('aes-cipher-type','AES/CBC/PKCS5PADDING'),('aes-iv-parameter-base64','VGhpc0lzVGVzdFZlY3Rvcg==')]);"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','aes'),('aes-cipher-type','AES/CBC/PKCS5PADDING'),('aes-iv-parameter-base64','VGhpc0lzVGVzdFZlY3Rvcg==')]);"
 
@@ -195,11 +211,13 @@ echo "Created DEID template: ${DEID_TEMPLATE_NAME}"
 
 echo "Creating DLP Functions"
 
-bq query --project_id ${PROJECT_ID} --use_legacy_sql=false "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(v STRING) RETURNS STRING
+bq query --project_id "${PROJECT_ID}" \
+--use_legacy_sql=false \
+"CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
 OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
 
-bq query --project_id ${PROJECT_ID} \
+bq query --project_id "${PROJECT_ID}" \
 --use_legacy_sql=false \
 "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(v STRING)
 RETURNS STRING
@@ -215,9 +233,9 @@ SELECT
   ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
   ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
   ${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(pii_column) AS aes_encrypted,
-  ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(fns.aes128ecb_encrypt(pii_column)) AS aes_decrypted,
+  ${BQ_FUNCTION_DATASET}.aes128ecb_decrypt(${BQ_FUNCTION_DATASET}.aes128ecb_encrypt(pii_column)) AS aes_decrypted,
   ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(pii_column) AS aes_encrypted,
-  ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_decrypted
+  ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(pii_column)) AS aes_decrypted
 FROM
   UNNEST(
     [

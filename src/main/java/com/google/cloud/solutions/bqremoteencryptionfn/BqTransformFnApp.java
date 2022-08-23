@@ -18,6 +18,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 
 
 import com.google.cloud.dlp.v2.DlpServiceClient;
+import com.google.cloud.dlp.v2.DlpServiceSettings;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.DlpFn.DlpClientFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -37,7 +38,9 @@ public class BqTransformFnApp {
 
   @Bean
   @Profile("!test")
-  public DlpClientFactory defaultDlpClientFactory() {
-    return DlpServiceClient::create;
+  public DlpClientFactory defaultDlpClientFactory(UserAgentHeaderProvider userAgentHeaderProvider) {
+    return () ->
+        DlpServiceClient.create(
+            DlpServiceSettings.newBuilder().setHeaderProvider(userAgentHeaderProvider).build());
   }
 }
