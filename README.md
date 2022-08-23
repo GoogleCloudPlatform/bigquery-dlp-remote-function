@@ -182,13 +182,38 @@ the AES Encryption key.
     --project="${PROJECT_ID}"
     ```
 
-1.  Enable Compute Engine Service account to access Cloud Secrets
+### Create Service Account for Cloud Run service
+
+For fine-grained access control, using a specialized service account for
+individual services is recommended.
+
+1.  Create a service Account:
+
     ```shell
-    PROJECT_NUMBER="$(gcloud projects list --filter="${PROJECT_ID}" --format="value(PROJECT_NUMBER)")"
-    COMPUTE_ENGINE_SA="$(gcloud iam service-accounts list --format="get(email)" --project "${PROJECT_ID}" | grep "${PROJECT_NUMBER}-compute@")"
-    gcloud projects add-iam-policy-binding ${PROJECT_ID} \
-    --member="serviceAccount:${COMPUTE_ENGINE_SA}" \
+    RUNNER_SA_NAME="${CLOUD_RUN_SERVICE_NAME}-runner-$(dd if=/dev/random count=1 bs=3 | base64)"
+    RUNNER_SA_EMAIL="${RUNNER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+    gcloud iam service-accounts create "${RUNNER_SA_NAME}" \
+    --project="${PROJECT_ID}" \
+    --description "Runner for BigQuery remote function execution" \
+    --display-name "${RUNNER_SA_NAME}"
+    ```
+
+1.  Grant permissions to the service account to access Cloud Secrets Manager and
+    DLP
+
+    ```shell
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${RUNNER_SA_EMAIL}" \
     --role='roles/secretmanager.secretAccessor'
+
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${RUNNER_SA_EMAIL}" \
+    --role='roles/dlp.deidentifyTemplatesReader'
+
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${RUNNER_SA_EMAIL}" \
+    --role='roles/dlp.user'
     ```
 
 ### Deploy Cloud Run service
@@ -205,6 +230,7 @@ the AES Encryption key.
     --execution-environment=gen2 \
     --platform=managed \
     --region="${REGION}" \
+    --service-account="${RUNNER_SA_EMAIL}" \
     --update-env-vars=PROJECT_ID=${PROJECT_ID} \
     --update-env-vars=AES_KEY_TYPE=${AES_KEY_TYPE} \
     --update-env-vars=AES_CIPHER_TYPE=${AES_CIPHER_TYPE} \
@@ -319,6 +345,20 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
     ```
 
 #### Create DLP Remote functions
+
+1.  Create Deidentify template [using the Cloud Console](https://cloud.google.com/dlp/docs/creating-templates-deid) or sample configuration below:
+
+    ```shell
+    DEID_TEMPLATE=$(curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -H "X-Goog-User-Project: ${PROJECT_ID}" \
+    --data-binary "@sample_dlp_deid_config.json" \
+    "https://dlp.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/deidentifyTemplates")
+
+    DEID_TEMPLATE_NAME=$(echo "${DEID_TEMPLATE}" | jq -r '.name')
+    ```
 
 1.  Create DLP de-identification function:
     ```shell
