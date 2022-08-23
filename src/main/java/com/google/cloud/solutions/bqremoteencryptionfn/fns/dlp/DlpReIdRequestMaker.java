@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.cloud.solutions.bqremoteencryptionfn.fns;
+package com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.toList;

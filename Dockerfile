@@ -14,13 +14,13 @@
 # limitations under the License.
 #
 
-FROM gradle:7.4.2-jdk17-alpine
+FROM gradle:7.4.2-jdk17-alpine AS build-test
 COPY . /bigquery-dlp-remote-function-src
 WORKDIR /bigquery-dlp-remote-function-src
 RUN gradle clean test assemble
 
 FROM eclipse-temurin:17-jre-focal
-COPY --from=0 /bigquery-dlp-remote-function-src/build/libs/bigquery-dlp-remote-function-0.0.1-SNAPSHOT.jar .
+COPY --from=build-test /bigquery-dlp-remote-function-src/build/libs/bigquery-dlp-remote-function-0.0.1-SNAPSHOT.jar .
 # Run the web service on container startup.
 RUN groupadd -r apprunner && useradd -rm -g apprunner apprunner
 RUN chown apprunner ./bigquery-dlp-remote-function-0.0.1-SNAPSHOT.jar
