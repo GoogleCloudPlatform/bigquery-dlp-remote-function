@@ -63,7 +63,7 @@ public class Base64EncodingDlpStub implements Serializable {
             return DeidentifyContentResponse.newBuilder()
                 .setItem(
                     ContentItem.newBuilder()
-                        .setTable(actioner.checkAndtransformRows(request.getItem().getTable())))
+                        .setTable(actioner.checkAndTransformRows(request.getItem().getTable())))
                 .build();
           }
         };
@@ -86,7 +86,7 @@ public class Base64EncodingDlpStub implements Serializable {
             return ReidentifyContentResponse.newBuilder()
                 .setItem(
                     ContentItem.newBuilder()
-                        .setTable(actioner.checkAndtransformRows(request.getItem().getTable())))
+                        .setTable(actioner.checkAndTransformRows(request.getItem().getTable())))
                 .build();
           }
         };
@@ -113,7 +113,7 @@ public class Base64EncodingDlpStub implements Serializable {
       }
     }
 
-    private Table checkAndtransformRows(Table table) {
+    private Table checkAndTransformRows(Table table) {
 
       checkCallParent();
 

@@ -14,22 +14,17 @@
  * limitations under the License.
  */
 
-package com.google.cloud.solutions.bqremoteencryptionfn.fns;
+package com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static java.util.stream.Collectors.toList;
 
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
-import com.google.common.flogger.GoogleLogger;
+import com.google.cloud.solutions.bqremoteencryptionfn.fns.UnaryStringArgFn;
 import com.google.privacy.dlp.v2.ContentItem;
 import com.google.privacy.dlp.v2.DeidentifyContentRequest;
-import com.google.privacy.dlp.v2.FieldId;
-import com.google.privacy.dlp.v2.Table;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
@@ -44,9 +39,6 @@ import org.springframework.stereotype.Component;
  * @see <a href="https://cloud.google.com/dlp/docs/creating-templates-deid">Deidentify Templates</a>
  */
 public final class DlpFn extends UnaryStringArgFn {
-
-  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
-
   public static final String FN_NAME = "dlp";
 
   public static final String DLP_DEID_TEMPLATE_KEY = "dlp-deid-template";
@@ -83,98 +75,58 @@ public final class DlpFn extends UnaryStringArgFn {
     }
   }
 
+  private final String dlpColName;
   private final String deidTemplateName;
-  private final RowsToTableFn tableFn;
-  private final TableToRowsFn rowsFn;
   private final DlpClientFactory dlpClientFactory;
 
   public DlpFn(String dlpColName, String deidTemplateName, DlpClientFactory dlpClientFactory) {
+    this.dlpColName = dlpColName;
     this.deidTemplateName = deidTemplateName;
-    this.tableFn = new RowsToTableFn(dlpColName);
-    this.rowsFn = new TableToRowsFn();
     this.dlpClientFactory = dlpClientFactory;
   }
 
   @Override
   public List<String> deidentifyUnaryRow(List<String> rows) throws Exception {
-    try (var dlpClient = dlpClientFactory.newClient()) {
-      var table = tableFn.apply(rows);
-
-      var request =
-          DeidentifyContentRequest.newBuilder()
-              .setParent(extractDlpParent(deidTemplateName))
-              .setDeidentifyTemplateName(deidTemplateName)
-              .setItem(ContentItem.newBuilder().setTable(table).build())
-              .build();
-
-      logger.atInfo().log("deidentify %s rows, %s bytes", rows.size(), request.getSerializedSize());
-
-      var deidentifiedValues = dlpClient.deidentifyContent(request);
-
-      return rowsFn.apply(deidentifiedValues.getItem().getTable());
-    }
+    return new DlpRequestBatchExecutor<>(
+            dlpColName,
+            dlpClientFactory,
+            dlpClient -> dlpClient::deidentifyContent,
+            dlpClient ->
+                table ->
+                    DeidentifyContentRequest.newBuilder()
+                        .setParent(extractDlpParent(deidTemplateName))
+                        .setDeidentifyTemplateName(deidTemplateName)
+                        .setItem(ContentItem.newBuilder().setTable(table).build())
+                        .build(),
+            deidRequest -> deidRequest.getItem().getTable(),
+            deidResponse -> deidResponse.getItem().getTable())
+        .process(rows);
   }
 
   @Override
   public List<String> reidentifyUnaryRow(List<String> rows) throws Exception {
-    try (var dlpClient = dlpClientFactory.newClient()) {
-
-      var table = tableFn.apply(rows);
-
-      var deidentifyConfig =
-          dlpClient.getDeidentifyTemplate(deidTemplateName).getDeidentifyConfig();
-
-      var reidRequest =
-          DlpReIdRequestMaker.forConfig(deidentifyConfig)
-              .makeRequest(ContentItem.newBuilder().setTable(table))
-              .toBuilder()
-              .setParent(extractDlpParent(deidTemplateName))
-              .build();
-
-      logger.atInfo().log(
-          "reidentify %s rows, %s bytes", rows.size(), reidRequest.getSerializedSize());
-
-      var reIdentifiedValues = dlpClient.reidentifyContent(reidRequest);
-
-      return rowsFn.apply(reIdentifiedValues.getItem().getTable());
-    }
+    return new DlpRequestBatchExecutor<>(
+            dlpColName,
+            dlpClientFactory,
+            dlpClient -> dlpClient::reidentifyContent,
+            dlpClient -> {
+              var deidentifyConfig =
+                  dlpClient.getDeidentifyTemplate(deidTemplateName).getDeidentifyConfig();
+              return (table) ->
+                  DlpReIdRequestMaker.forConfig(deidentifyConfig)
+                      .makeRequest(ContentItem.newBuilder().setTable(table))
+                      .toBuilder()
+                      .setParent(extractDlpParent(deidTemplateName))
+                      .build();
+            },
+            reidRequest -> reidRequest.getItem().getTable(),
+            reidResponse -> reidResponse.getItem().getTable())
+        .process(rows);
   }
 
   @Override
   public String getName() {
     return FN_NAME;
-  }
-
-  private static class RowsToTableFn implements Function<List<String>, Table> {
-
-    private final FieldId dlpColName;
-
-    public RowsToTableFn(String dlpColName) {
-      this.dlpColName = FieldId.newBuilder().setName(dlpColName).build();
-    }
-
-    @Override
-    public Table apply(List<String> rows) {
-      return Table.newBuilder()
-          .addHeaders(dlpColName)
-          .addAllRows(
-              rows.stream()
-                  .map(e -> com.google.privacy.dlp.v2.Value.newBuilder().setStringValue(e).build())
-                  .map(v -> Table.Row.newBuilder().addValues(v).build())
-                  .collect(toList()))
-          .build();
-    }
-  }
-
-  private static class TableToRowsFn implements Function<Table, List<String>> {
-
-    @Override
-    public List<String> apply(Table table) {
-      return table.getRowsList().stream()
-          .map(r -> r.getValues(0))
-          .map(com.google.privacy.dlp.v2.Value::getStringValue)
-          .collect(toImmutableList());
-    }
   }
 
   private static String extractDlpParent(String dlpTemplateName) {

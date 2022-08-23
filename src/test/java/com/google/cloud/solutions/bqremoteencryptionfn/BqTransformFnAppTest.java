@@ -23,7 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.google.cloud.dlp.v2.DlpServiceClient;
-import com.google.cloud.solutions.bqremoteencryptionfn.fns.DlpFn.DlpClientFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp.DlpFn.DlpClientFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.BaseUnaryApiFuture.ApiFutureFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.Base64EncodingDlpStub;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.MappingDeidentifyTemplateCallerFactory;

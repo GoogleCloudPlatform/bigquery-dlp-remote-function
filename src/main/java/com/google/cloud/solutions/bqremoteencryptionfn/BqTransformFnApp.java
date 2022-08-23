@@ -19,7 +19,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.dlp.v2.DlpServiceSettings;
-import com.google.cloud.solutions.bqremoteencryptionfn.fns.DlpFn.DlpClientFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp.DlpFn.DlpClientFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
