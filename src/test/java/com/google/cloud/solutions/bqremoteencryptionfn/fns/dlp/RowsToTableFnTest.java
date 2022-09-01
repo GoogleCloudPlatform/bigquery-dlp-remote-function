@@ -20,12 +20,12 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp.DlpRequestBatchExecutor.RowsToTableFn;
 import com.google.common.collect.ImmutableList;
 import com.google.common.flogger.GoogleLogger;
 import com.google.common.truth.extensions.proto.ProtoTruth;
 import java.util.List;
 import java.util.stream.IntStream;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
@@ -45,6 +45,8 @@ public final class RowsToTableFnTest {
 
     private final int expectedTablesCount;
 
+    private DlpRequestBatchExecutor<Object, Object> executor;
+
     public ParameterizedTests(
         String testCaseName,
         int maxCellCount,
@@ -59,10 +61,20 @@ public final class RowsToTableFnTest {
       GoogleLogger.forEnclosingClass().atInfo().log("testCase: %s", testCaseName);
     }
 
+    @Before
+    public void buildExecutor() {
+      executor =
+          DlpRequestBatchExecutor.builder()
+              .setDlpColumnName("testDlpColumn")
+              .setRequestMaxBytes(maxBytes)
+              .setRequestCellCount(maxCellCount)
+              .build();
+    }
+
     @Test
     public void apply_valid() {
 
-      var tables = new RowsToTableFn("testDlpColumn", maxCellCount, maxBytes).apply(testRows);
+      var tables = executor.rowsToTableFn().apply(testRows);
 
       assertThat(tables).hasSize(expectedTablesCount);
       tables.forEach(
@@ -95,7 +107,7 @@ public final class RowsToTableFnTest {
           .add(
               new Object[] {
                 /*testCaseName=*/ "Tables split for maxBytes",
-                /*maxCellCount=*/ DlpRequestBatchExecutor.REQUEST_MAX_CELL_COUNT,
+                /*maxCellCount=*/ 50000,
                 /*maxBytes=*/ 100,
                 /*testRows=*/ makeRows("iBaseStringToMakeFiftyBytesSizeOfStringWhyHard", 10),
                 /*expectedTablesCount=*/ 10
@@ -118,8 +130,12 @@ public final class RowsToTableFnTest {
     public void singleElementMoreThanMaxBytes_throwsRuntimeException() {
 
       var fn =
-          new RowsToTableFn(
-              /*dlpColumnName=*/ "testDlpCol", /*maxCellCount=*/ 10000, /*maxBytes=*/ 50);
+          DlpRequestBatchExecutor.builder()
+              .setDlpColumnName("testDlpColumn")
+              .setRequestMaxBytes(50)
+              .setRequestCellCount(10000)
+              .build()
+              .rowsToTableFn();
 
       var runtimeException =
           assertThrows(
@@ -132,6 +148,40 @@ public final class RowsToTableFnTest {
       assertThat(runtimeException)
           .hasMessageThat()
           .startsWith("Single Row size greater than DLP limit.");
+    }
+
+    @Test
+    public void maxBytesMoreThanMaxBytes_throwsRuntimeException() {
+
+      var executor =
+          DlpRequestBatchExecutor.builder()
+              .setDlpColumnName("testDlpColumn")
+              .setRequestMaxBytes(DlpRequestBatchExecutor.REQUEST_MAX_BYTES + 1)
+              .setRequestCellCount(1)
+              .build();
+
+      var runtimeException = assertThrows(IllegalArgumentException.class, executor::rowsToTableFn);
+
+      assertThat(runtimeException)
+          .hasMessageThat()
+          .startsWith("Provided DLP requestMaxBytes (500001) is more than maximum (500000)");
+    }
+
+    @Test
+    public void dlpRowsMoreThanMaxRowCount_throwsRuntimeException() {
+
+      var executor =
+          DlpRequestBatchExecutor.builder()
+              .setDlpColumnName("testDlpColumn")
+              .setRequestMaxBytes(DlpRequestBatchExecutor.REQUEST_MAX_BYTES)
+              .setRequestCellCount(50001)
+              .build();
+
+      var runtimeException = assertThrows(IllegalArgumentException.class, executor::rowsToTableFn);
+
+      assertThat(runtimeException)
+          .hasMessageThat()
+          .startsWith("Provided DLP requestCellCount (50001) is more than maximum (50000)");
     }
   }
 }

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nonnull;
 import org.springframework.stereotype.Component;
 
 /**
@@ -37,7 +38,7 @@ public final class Base64Fn extends UnaryStringArgFn {
   @Component
   public static class Base64TransformFnFactory implements TransformFnFactory<Base64Fn> {
     @Override
-    public Base64Fn createFn(Map<String, String> options) {
+    public Base64Fn createFn(@Nonnull Map<String, String> options) {
       return new Base64Fn();
     }
 

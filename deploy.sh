@@ -122,6 +122,8 @@ gcloud beta run deploy ${CLOUD_RUN_SERVICE_NAME} \
 --execution-environment=gen2 \
 --platform=managed \
 --region="${REGION}" \
+--cpu=4 \
+--memory=8Gi \
 --service-account="${RUNNER_SA_EMAIL}" \
 --update-env-vars=PROJECT_ID=${PROJECT_ID} \
 --update-env-vars=AES_KEY_TYPE=${AES_KEY_TYPE} \

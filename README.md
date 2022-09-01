@@ -433,7 +433,26 @@ and reidentifying the data using SQL:
     | My name is John Doe. My email is john@doe.com | My name is John Doe. My email is BQ_TOK_FN(40):AQy6lGvwKR+AiiRqJpEr+nBzZUzOcjXkXamUugU= | My name is John Doe. My email is john@doe.com | qWnwDEY3bDTCV/azveHnxUm24z/DvUcVLZWHyN4Rg16ISvqswcuYXNXsOyI4/d8M | My name is John Doe. My email is john@doe.com |
     | Some non PII data                              | Some non PII data                                                                       | Some non PII data                                                | 37Agm90CqzGXwerJxai/Tf89ffRN9FpPkuuDW+rz7ns=                     | Some non PII data                             |
 
+## Limitations
+
+ *  The de-identification and re-identification processing occurs through a Cloud Run service.
+    Please provision the Cloud Run CPU/Memory in accordance with your compute requirements
+ *  When using DLP consider following:
+    *  Use at least `--cpu=4 --memory=8Gi` for Cloud Run instance
+    *  When using DLP consider following limits for throughput and cost considerations:
+    *  Limit to 10000 or fewer items for DLP processing
+ *  Ensure BigQuery, Cloud Run service and DLP templates are in the same cloud region
+
 ## Cleaning up
+
+<div style="color: lightcoral">
+<b>Caution:</b> Deleting a project has the following effects:
+<ul style="color: lightcoral">
+    <li> Everything in the project is deleted. If you used an existing project for this tutorial, when you delete it, you also delete any other work you've done in the project. </li>
+    <li> Custom project IDs are lost. When you created this project, you might have created a custom project ID that you want to use in the future. To preserve the URLs that use the project ID, such as an appspot.com URL, delete selected resources inside the project instead of deleting the whole project. </li>
+</ul>
+If you plan to explore multiple tutorials and quickstarts, reusing projects can help you avoid exceeding project quota limits.
+</div>
 
 To avoid incurring charges to your Google Cloud account for the resources used in this tutorial, you can delete the project:
 

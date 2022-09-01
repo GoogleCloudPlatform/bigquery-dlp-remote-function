@@ -20,9 +20,12 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.dlp.v2.DlpServiceSettings;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp.DlpFn.DlpClientFactory;
+import org.apache.coyote.http11.AbstractHttp11Protocol;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -42,5 +45,20 @@ public class BqTransformFnApp {
     return () ->
         DlpServiceClient.create(
             DlpServiceSettings.newBuilder().setHeaderProvider(userAgentHeaderProvider).build());
+  }
+
+  // Enable Keep-Alive HTTP Response header
+  @Bean
+  public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
+    return (tomcat) ->
+        tomcat.addConnectorCustomizers(
+            (connector) -> {
+              if (connector.getProtocolHandler()
+                  instanceof AbstractHttp11Protocol<?> protocolHandler) {
+                protocolHandler.setKeepAliveTimeout(300000);
+                protocolHandler.setMaxKeepAliveRequests(100);
+                protocolHandler.setUseKeepAliveResponseHeader(true);
+              }
+            });
   }
 }
