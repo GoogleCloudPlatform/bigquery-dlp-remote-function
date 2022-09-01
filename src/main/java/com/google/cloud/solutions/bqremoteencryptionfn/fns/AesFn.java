@@ -25,6 +25,7 @@ import java.security.GeneralSecurityException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nonnull;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -69,14 +70,12 @@ public final class AesFn extends UnaryStringArgFn {
     }
 
     @Override
-    public AesFn createFn(Map<String, String> options) {
+    public AesFn createFn(@Nonnull Map<String, String> options) {
       return new AesFn(
           aesKeyString,
           aesKeyType,
-          (options == null) ? cipherType : options.getOrDefault(AES_CIPHER_TYPE_KEY, cipherType),
-          (options == null)
-              ? ivParameterBase64
-              : options.getOrDefault(AES_IV_PARAMETER_KEY, ivParameterBase64));
+          options.getOrDefault(AES_CIPHER_TYPE_KEY, cipherType),
+          options.getOrDefault(AES_IV_PARAMETER_KEY, ivParameterBase64));
     }
   }
 

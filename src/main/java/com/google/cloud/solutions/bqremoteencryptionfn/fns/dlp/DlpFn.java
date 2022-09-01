@@ -23,9 +23,13 @@ import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.UnaryStringArgFn;
 import com.google.privacy.dlp.v2.ContentItem;
 import com.google.privacy.dlp.v2.DeidentifyContentRequest;
+import com.google.privacy.dlp.v2.DeidentifyContentResponse;
+import com.google.privacy.dlp.v2.ReidentifyContentRequest;
+import com.google.privacy.dlp.v2.ReidentifyContentResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
@@ -55,18 +59,28 @@ public final class DlpFn extends UnaryStringArgFn {
   @PropertySource("classpath:dlp.properties")
   public static class DlpTransformFnFactory implements TransformFnFactory<DlpFn> {
     private final String dlpColName;
+
+    private final int requestCellCount;
+
+    private final int requestBytes;
     private final DlpClientFactory dlpClientFactory;
 
     public DlpTransformFnFactory(
-        @Value("${dlp.valueColName}") String dlpColName, DlpClientFactory dlpClientFactory) {
+        @Value("${dlp.valueColName}") String dlpColName,
+        @Value("${dlp.requestCellCount}") int requestCellCount,
+        @Value("${dlp.requestBytes}") int requestBytes,
+        DlpClientFactory dlpClientFactory) {
       this.dlpColName = dlpColName;
+      this.requestCellCount = requestCellCount;
+      this.requestBytes = requestBytes;
       this.dlpClientFactory = dlpClientFactory;
     }
 
     @Override
-    public DlpFn createFn(Map<String, String> options) {
+    public DlpFn createFn(@Nonnull Map<String, String> options) {
       var deidTemplateName = options.get(DLP_DEID_TEMPLATE_KEY);
-      return new DlpFn(dlpColName, deidTemplateName, dlpClientFactory);
+      return new DlpFn(
+          requestCellCount, requestBytes, dlpColName, deidTemplateName, dlpClientFactory);
     }
 
     @Override
@@ -76,10 +90,21 @@ public final class DlpFn extends UnaryStringArgFn {
   }
 
   private final String dlpColName;
+
+  private final int requestCellCount;
+
+  private final int requestBytes;
   private final String deidTemplateName;
   private final DlpClientFactory dlpClientFactory;
 
-  public DlpFn(String dlpColName, String deidTemplateName, DlpClientFactory dlpClientFactory) {
+  private DlpFn(
+      int requestCellCount,
+      int requestBytes,
+      String dlpColName,
+      String deidTemplateName,
+      DlpClientFactory dlpClientFactory) {
+    this.requestCellCount = requestCellCount;
+    this.requestBytes = requestBytes;
     this.dlpColName = dlpColName;
     this.deidTemplateName = deidTemplateName;
     this.dlpClientFactory = dlpClientFactory;
@@ -87,28 +112,35 @@ public final class DlpFn extends UnaryStringArgFn {
 
   @Override
   public List<String> deidentifyUnaryRow(List<String> rows) throws Exception {
-    return new DlpRequestBatchExecutor<>(
-            dlpColName,
-            dlpClientFactory,
-            dlpClient -> dlpClient::deidentifyContent,
+    return DlpRequestBatchExecutor.<DeidentifyContentRequest, DeidentifyContentResponse>builder()
+        .setDlpColumnName(dlpColName)
+        .setRequestCellCount(requestCellCount)
+        .setRequestMaxBytes(requestBytes)
+        .setDlpClientFactory(dlpClientFactory)
+        .setDlpCallFnFactory(dlpClient -> dlpClient::deidentifyContent)
+        .setTableToDlpRequestFnFactory(
             dlpClient ->
                 table ->
                     DeidentifyContentRequest.newBuilder()
                         .setParent(extractDlpParent(deidTemplateName))
                         .setDeidentifyTemplateName(deidTemplateName)
                         .setItem(ContentItem.newBuilder().setTable(table).build())
-                        .build(),
-            deidRequest -> deidRequest.getItem().getTable(),
-            deidResponse -> deidResponse.getItem().getTable())
+                        .build())
+        .setDlpRequestToTableFn(deidRequest -> deidRequest.getItem().getTable())
+        .setDlpResponseToTableFn(deidResponse -> deidResponse.getItem().getTable())
+        .build()
         .process(rows);
   }
 
   @Override
   public List<String> reidentifyUnaryRow(List<String> rows) throws Exception {
-    return new DlpRequestBatchExecutor<>(
-            dlpColName,
-            dlpClientFactory,
-            dlpClient -> dlpClient::reidentifyContent,
+    return DlpRequestBatchExecutor.<ReidentifyContentRequest, ReidentifyContentResponse>builder()
+        .setDlpColumnName(dlpColName)
+        .setRequestCellCount(requestCellCount)
+        .setRequestMaxBytes(requestBytes)
+        .setDlpClientFactory(dlpClientFactory)
+        .setDlpCallFnFactory(dlpClient -> dlpClient::reidentifyContent)
+        .setTableToDlpRequestFnFactory(
             dlpClient -> {
               var deidentifyConfig =
                   dlpClient.getDeidentifyTemplate(deidTemplateName).getDeidentifyConfig();
@@ -118,9 +150,10 @@ public final class DlpFn extends UnaryStringArgFn {
                       .toBuilder()
                       .setParent(extractDlpParent(deidTemplateName))
                       .build();
-            },
-            reidRequest -> reidRequest.getItem().getTable(),
-            reidResponse -> reidResponse.getItem().getTable())
+            })
+        .setDlpRequestToTableFn(reidRequest -> reidRequest.getItem().getTable())
+        .setDlpResponseToTableFn(reidResponse -> reidResponse.getItem().getTable())
+        .build()
         .process(rows);
   }
 

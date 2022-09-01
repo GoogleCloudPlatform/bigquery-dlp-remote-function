@@ -16,6 +16,7 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
 
@@ -39,13 +40,17 @@ import java.util.stream.Stream;
  * @see <a href="https://cloud.google.com/dlp/limits#content-redaction-limits">Redaction Limits</a>.
  * @see <a href="https://cloud.google.com/dlp/limits#content-limits">Content Limits</a>
  */
-public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
+public final class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
 
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   public static final int REQUEST_MAX_CELL_COUNT = 50000;
 
   public static final int REQUEST_MAX_BYTES = 500000;
+
+  private final int requestCellCount;
+
+  private final int requestMaxBytes;
 
   private final String dlpColumnName;
   private final DlpClientFactory dlpClientFactory;
@@ -56,13 +61,17 @@ public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
   private final Function<DlpRequestT, Table> dlpRequestToTableFn;
   private final Function<DlpResponseT, Table> dlpResponseToTableFn;
 
-  public DlpRequestBatchExecutor(
+  private DlpRequestBatchExecutor(
+      int requestCellCount,
+      int requestMaxBytes,
       String dlpColumnName,
       DlpClientFactory dlpClientFactory,
       Function<DlpServiceClient, Function<DlpRequestT, DlpResponseT>> dlpCallFnFactory,
       Function<DlpServiceClient, Function<Table, DlpRequestT>> tableToDlpRequestFnFactory,
       Function<DlpRequestT, Table> dlpRequestToTableFn,
       Function<DlpResponseT, Table> dlpResponseToTableFn) {
+    this.requestCellCount = requestCellCount;
+    this.requestMaxBytes = requestMaxBytes;
     this.dlpColumnName = dlpColumnName;
     this.dlpClientFactory = dlpClientFactory;
     this.dlpCallFnFactory = dlpCallFnFactory;
@@ -76,7 +85,7 @@ public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
     try (var dlpClient = dlpClientFactory.newClient()) {
 
       var requestMaker = tableToDlpRequestFnFactory.apply(dlpClient);
-      var rowToTableFn = new RowsToTableFn(dlpColumnName);
+      var rowToTableFn = rowsToTableFn();
       var tableToRowsFn = new TableToRowsFn();
 
       return rowToTableFn.apply(rows).stream()
@@ -158,21 +167,24 @@ public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
   }
 
   @VisibleForTesting
-  static final class RowsToTableFn implements Function<List<String>, List<Table>> {
+  Function<List<String>, List<Table>> rowsToTableFn() {
+    return new RowsToTableFn();
+  }
 
-    private final String dlpColumnName;
-    private final int maxCellCount;
-    private final int maxBytes;
+  private final class RowsToTableFn implements Function<List<String>, List<Table>> {
 
-    @VisibleForTesting
-    RowsToTableFn(String dlpColumnName, int maxCellCount, int maxBytes) {
-      this.dlpColumnName = dlpColumnName;
-      this.maxCellCount = maxCellCount;
-      this.maxBytes = maxBytes;
-    }
+    private RowsToTableFn() {
+      checkArgument(
+          requestCellCount <= REQUEST_MAX_CELL_COUNT,
+          "Provided DLP requestCellCount (%s) is more than maximum (%s)",
+          requestCellCount,
+          REQUEST_MAX_CELL_COUNT);
 
-    RowsToTableFn(String dlpColumnName) {
-      this(dlpColumnName, REQUEST_MAX_CELL_COUNT, REQUEST_MAX_BYTES);
+      checkArgument(
+          requestMaxBytes <= REQUEST_MAX_BYTES,
+          "Provided DLP requestMaxBytes (%s) is more than maximum (%s)",
+          requestMaxBytes,
+          REQUEST_MAX_BYTES);
     }
 
     @Override
@@ -184,15 +196,15 @@ public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
       for (var stringRow : rows) {
         var tableRow = convertStringToRow(stringRow);
 
-        if (tableRow.getSerializedSize() >= maxBytes) {
+        if (tableRow.getSerializedSize() >= requestMaxBytes) {
           throw new RuntimeException(
               String.format(
                   "Single Row size greater than DLP limit. Found %s bytes",
                   tableRow.getSerializedSize()));
         }
 
-        if (accTable.getRowsCount() + 1 > maxCellCount
-            || accTable.getSerializedSize() + tableRow.getSerializedSize() >= maxBytes) {
+        if (accTable.getRowsCount() + 1 > requestCellCount
+            || accTable.getSerializedSize() + tableRow.getSerializedSize() >= requestMaxBytes) {
 
           requestTableBuilder.add(accTable);
           accTable = newTable();
@@ -236,6 +248,83 @@ public class DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> {
           .map(r -> r.getValues(headerIndex))
           .map(com.google.privacy.dlp.v2.Value::getStringValue)
           .collect(toImmutableList());
+    }
+  }
+
+  public static <DlpRequestT, DlpResponseT> Builder<DlpRequestT, DlpResponseT> builder() {
+    return new Builder<>();
+  }
+
+  public static class Builder<DlpRequestT, DlpResponseT> {
+    private int requestCellCount;
+    private int requestMaxBytes;
+    private String dlpColumnName;
+    private DlpClientFactory dlpClientFactory;
+    private Function<DlpServiceClient, Function<DlpRequestT, DlpResponseT>> dlpCallFnFactory;
+    private Function<DlpServiceClient, Function<Table, DlpRequestT>> tableToDlpRequestFnFactory;
+    private Function<DlpRequestT, Table> dlpRequestToTableFn;
+    private Function<DlpResponseT, Table> dlpResponseToTableFn;
+
+    public Builder() {
+      this.requestCellCount = REQUEST_MAX_CELL_COUNT;
+      this.requestMaxBytes = REQUEST_MAX_BYTES;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setRequestCellCount(int requestCellCount) {
+      this.requestCellCount = requestCellCount;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setRequestMaxBytes(int requestMaxBytes) {
+      this.requestMaxBytes = requestMaxBytes;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setDlpColumnName(String dlpColumnName) {
+      this.dlpColumnName = dlpColumnName;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setDlpClientFactory(
+        DlpClientFactory dlpClientFactory) {
+      this.dlpClientFactory = dlpClientFactory;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setDlpCallFnFactory(
+        Function<DlpServiceClient, Function<DlpRequestT, DlpResponseT>> dlpCallFnFactory) {
+      this.dlpCallFnFactory = dlpCallFnFactory;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setTableToDlpRequestFnFactory(
+        Function<DlpServiceClient, Function<Table, DlpRequestT>> tableToDlpRequestFnFactory) {
+      this.tableToDlpRequestFnFactory = tableToDlpRequestFnFactory;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setDlpRequestToTableFn(
+        Function<DlpRequestT, Table> dlpRequestToTableFn) {
+      this.dlpRequestToTableFn = dlpRequestToTableFn;
+      return this;
+    }
+
+    public Builder<DlpRequestT, DlpResponseT> setDlpResponseToTableFn(
+        Function<DlpResponseT, Table> dlpResponseToTableFn) {
+      this.dlpResponseToTableFn = dlpResponseToTableFn;
+      return this;
+    }
+
+    public DlpRequestBatchExecutor<DlpRequestT, DlpResponseT> build() {
+      return new DlpRequestBatchExecutor<>(
+          requestCellCount,
+          requestMaxBytes,
+          dlpColumnName,
+          dlpClientFactory,
+          dlpCallFnFactory,
+          tableToDlpRequestFnFactory,
+          dlpRequestToTableFn,
+          dlpResponseToTableFn);
     }
   }
 }

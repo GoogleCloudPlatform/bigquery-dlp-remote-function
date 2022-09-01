@@ -20,6 +20,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nonnull;
 import org.springframework.stereotype.Component;
 
 /** Simple Pass-through function, does not transform the input. */
@@ -30,7 +31,7 @@ public final class IdentityFn extends UnaryStringArgFn {
   @Component
   public static class IdentityTransformFnFactory implements TransformFnFactory<IdentityFn> {
     @Override
-    public IdentityFn createFn(Map<String, String> options) {
+    public IdentityFn createFn(@Nonnull Map<String, String> options) {
       return new IdentityFn();
     }
 

@@ -18,7 +18,7 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 
 
 import java.util.Map;
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 
 /** Factory interface for creating objects of a {@link TransformFn} implementation. */
 public interface TransformFnFactory<T extends TransformFn> {
@@ -28,7 +28,7 @@ public interface TransformFnFactory<T extends TransformFn> {
    *
    * @param options the implementation specific configuration
    */
-  T createFn(@Nullable Map<String, String> options);
+  T createFn(@Nonnull Map<String, String> options);
 
   /**
    * Returns the name of the encryption algorithm implemented. Needs to be unique for all loaded

@@ -64,33 +64,37 @@ public class DlpRequestBatchExecutorTest {
             new RequestMeasuringDlpCaller<>(dlpClient -> dlpClient::reidentifyContent);
 
     var deidRows =
-        new DlpRequestBatchExecutor<>(
-                "dlpColumnName",
-                () -> dlpServiceClient,
-                deidRequestMeasuringDlpCaller,
+        DlpRequestBatchExecutor.<DeidentifyContentRequest, DeidentifyContentResponse>builder()
+            .setDlpColumnName("dlpColumnName")
+            .setDlpClientFactory(() -> dlpServiceClient)
+            .setDlpCallFnFactory(deidRequestMeasuringDlpCaller)
+            .setTableToDlpRequestFnFactory(
                 dlpClient ->
                     table ->
                         DeidentifyContentRequest.newBuilder()
                             .setParent("projects/test-project-id")
                             .setItem(ContentItem.newBuilder().setTable(table))
-                            .build(),
-                deidRequest -> deidRequest.getItem().getTable(),
-                deidResponse -> deidResponse.getItem().getTable())
+                            .build())
+            .setDlpRequestToTableFn(deidRequest -> deidRequest.getItem().getTable())
+            .setDlpResponseToTableFn(deidResponse -> deidResponse.getItem().getTable())
+            .build()
             .process(testRows);
 
     var reidRows =
-        new DlpRequestBatchExecutor<>(
-                "dlpColumnName",
-                () -> dlpServiceClient,
-                reidRequestMeasuringDlpCaller,
+        DlpRequestBatchExecutor.<ReidentifyContentRequest, ReidentifyContentResponse>builder()
+            .setDlpColumnName("dlpColumnName")
+            .setDlpClientFactory(() -> dlpServiceClient)
+            .setDlpCallFnFactory(reidRequestMeasuringDlpCaller)
+            .setTableToDlpRequestFnFactory(
                 dlpClient ->
                     table ->
                         ReidentifyContentRequest.newBuilder()
                             .setParent("projects/test-project-id")
                             .setItem(ContentItem.newBuilder().setTable(table))
-                            .build(),
-                reidRequest -> reidRequest.getItem().getTable(),
-                reidResponse -> reidResponse.getItem().getTable())
+                            .build())
+            .setDlpRequestToTableFn(reidRequest -> reidRequest.getItem().getTable())
+            .setDlpResponseToTableFn(reidResponse -> reidResponse.getItem().getTable())
+            .build()
             .process(deidRows);
 
     assertThat(deidRows).hasSize(testRows.size());
@@ -114,18 +118,20 @@ public class DlpRequestBatchExecutorTest {
             new RequestMeasuringDlpCaller<>(dlpClient -> dlpClient::deidentifyContent);
 
     var deidRows =
-        new DlpRequestBatchExecutor<>(
-                "dlpColumnName",
-                () -> dlpServiceClient,
-                deidRequestMeasuringDlpCaller,
+        DlpRequestBatchExecutor.<DeidentifyContentRequest, DeidentifyContentResponse>builder()
+            .setDlpColumnName("dlpColumnName")
+            .setDlpClientFactory(() -> dlpServiceClient)
+            .setDlpCallFnFactory(deidRequestMeasuringDlpCaller)
+            .setTableToDlpRequestFnFactory(
                 dlpClient ->
                     table ->
                         DeidentifyContentRequest.newBuilder()
                             .setParent("projects/test-project-id")
                             .setItem(ContentItem.newBuilder().setTable(table))
-                            .build(),
-                deidRequest -> deidRequest.getItem().getTable(),
-                deidResponse -> deidResponse.getItem().getTable())
+                            .build())
+            .setDlpRequestToTableFn(deidRequest -> deidRequest.getItem().getTable())
+            .setDlpResponseToTableFn(deidResponse -> deidResponse.getItem().getTable())
+            .build()
             .process(testRows);
 
     assertThat(deidRows).hasSize(testRows.size());
