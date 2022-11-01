@@ -108,7 +108,8 @@ public final class DlpReIdRequestMaker {
               .map(extractSurrogateFromField)
               .flatMap(List::stream);
 
-          case TRANSFORMATION_NOT_SET -> throwUnknownTransformationException();
+          case IMAGE_TRANSFORMATIONS,
+              TRANSFORMATION_NOT_SET -> throwUnknownTransformationException();
         };
 
     return surrogateNamesStream
@@ -169,7 +170,7 @@ public final class DlpReIdRequestMaker {
       case INFO_TYPE_TRANSFORMATIONS -> reIdConfigBuilder.setInfoTypeTransformations(
           rewriteForReId(deidentifyConfig.getInfoTypeTransformations()));
 
-      case TRANSFORMATION_NOT_SET -> {}
+      case IMAGE_TRANSFORMATIONS, TRANSFORMATION_NOT_SET -> {}
     }
     return reIdConfigBuilder.build();
   }

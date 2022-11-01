@@ -28,7 +28,8 @@ version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '17'
 
 def floggerVersion = "0.7.4"
-def springBootVersion = "2.7.3"
+def springBootVersion = "2.7.5"
+def protobufVersion = "3.21.8"
 
 configurations {
     compileOnly {
@@ -45,7 +46,7 @@ dependencies {
 
     // Commons library deps
     implementation "com.google.guava:guava:31.1-jre"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.13.3"
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
 
     // Logging framework
     implementation "com.google.flogger:flogger:${floggerVersion}"
@@ -53,21 +54,25 @@ dependencies {
     runtimeOnly "com.google.flogger:flogger-system-backend:${floggerVersion}"
 
     // Google Cloud Service Client Libraries
-    implementation "com.google.cloud:google-cloud-dlp:3.6.7"
+    implementation "com.google.cloud:google-cloud-dlp:3.9.0"
 
     //Spring deps
-    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    implementation ("org.springframework.boot:spring-boot-starter-web:${springBootVersion}") {
+        exclude group: "org.yaml", module: "snakeyaml"
+    }
+
+    implementation "org.yaml:snakeyaml:1.33"
+
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
 
     // Test Deps
-
     testImplementation "junit:junit:4.13.2"
     testImplementation "com.google.truth:truth:1.1.3"
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
 
     // proto json format
-    testImplementation "com.google.protobuf:protobuf-java:3.21.4"
-    testImplementation "com.google.protobuf:protobuf-java-util:3.21.4"
+    testImplementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    testImplementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
     testImplementation "com.google.truth.extensions:truth-proto-extension:1.1.3"
 
 }
@@ -144,7 +149,7 @@ spotless {
                 "// you may not use this file except in compliance with the License.\n" +
                 "// You may obtain a copy of the License at\n" +
                 "//\n" +
-                "//     http://www.apache.org/licenses/LICENSE-2.0\n" +
+                "//     https://www.apache.org/licenses/LICENSE-2.0\n" +
                 "//\n" +
                 "// Unless required by applicable law or agreed to in writing, software\n" +
                 "// distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
