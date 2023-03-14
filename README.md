@@ -361,6 +361,10 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
     ```
 
 1.  Create DLP de-identification function:
+
+    DLP uses default inspection template, if you want to use your custom [Inspection template](https://cloud.google.com/dlp/docs/concepts-templates#the_inspecttemplate_and_deidentifytemplate_objects),
+    please add following to the `user_defined_context`: `('dlp-inspect-template', '<full inspection template name>')`
+
     ```shell
     bq query --project_id ${PROJECT_ID} \
     --use_legacy_sql=false \
@@ -371,6 +375,9 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
     ```
 
 1.  Create DLP re-identification function:
+
+    DLP uses default inspection template, if you want to use your custom [Inspection template](https://cloud.google.com/dlp/docs/concepts-templates#the_inspecttemplate_and_deidentifytemplate_objects),
+    please add following to the `user_defined_context`: `('dlp-inspect-template', '<full inspection template name>')`
 
     ```shell
     bq query --project_id ${PROJECT_ID} \
