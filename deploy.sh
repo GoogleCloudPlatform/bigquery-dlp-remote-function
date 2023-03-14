@@ -31,6 +31,8 @@ CLOUD_RUN_SERVICE_NAME="bq-transform-fns"
 
 BQ_FUNCTION_DATASET="fns"
 
+DLP_INSPECT_TEMPLATE=""
+
 CLOUD_SECRET_KEY_NAME="${CLOUD_RUN_SERVICE_NAME}-aes-key"
 
 # Can be 'UTF_8_KEY' OR 'BASE64_KEY'
@@ -217,14 +219,14 @@ bq query --project_id "${PROJECT_ID}" \
 --use_legacy_sql=false \
 "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(v STRING) RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}'),('dlp-inspect-template','${DLP_INSPECT_TEMPLATE}')]);"
 
 bq query --project_id "${PROJECT_ID}" \
 --use_legacy_sql=false \
 "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(v STRING)
 RETURNS STRING
 REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}')]);"
+OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','dlp'),('dlp-deid-template','${DEID_TEMPLATE_NAME}'),('dlp-inspect-template','${DLP_INSPECT_TEMPLATE}')]);"
 
 echo "All Resources Created."
 
