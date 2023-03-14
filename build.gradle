@@ -16,20 +16,20 @@
 
 plugins {
     id 'java'
-    id 'com.diffplug.spotless' version '6.9.1'
-    id 'org.springframework.boot' version '2.6.10'
-    id 'io.spring.dependency-management' version '1.0.12.RELEASE'
+    id 'com.diffplug.spotless' version '6.17.0'
+    id 'org.springframework.boot' version '3.0.4'
     id 'jacoco'
     id 'idea'
 }
 
 group = 'com.google.cloud.solutions'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
+version = '0.1.0-SNAPSHOT'
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 def floggerVersion = "0.7.4"
-def springBootVersion = "2.7.5"
-def protobufVersion = "3.21.8"
+def springBootVersion = "3.0.4"
+def protobufVersion = "3.22.2"
 
 configurations {
     compileOnly {
@@ -46,7 +46,7 @@ dependencies {
 
     // Commons library deps
     implementation "com.google.guava:guava:31.1-jre"
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+    implementation "com.google.code.gson:gson:2.10.1"
 
     // Logging framework
     implementation "com.google.flogger:flogger:${floggerVersion}"
@@ -59,9 +59,8 @@ dependencies {
     //Spring deps
     implementation ("org.springframework.boot:spring-boot-starter-web:${springBootVersion}") {
         exclude group: "org.yaml", module: "snakeyaml"
+        exclude group: "org.springframework.boot", module: "spring-boot-starter-json"
     }
-
-    implementation "org.yaml:snakeyaml:1.33"
 
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
 
@@ -93,9 +92,9 @@ test {
 
 jacocoTestReport {
     reports {
-        csv.enabled false
-        xml.enabled true
-        html.enabled true
+        csv.required = false
+        xml.required = true
+        html.required = true
     }
 }
 

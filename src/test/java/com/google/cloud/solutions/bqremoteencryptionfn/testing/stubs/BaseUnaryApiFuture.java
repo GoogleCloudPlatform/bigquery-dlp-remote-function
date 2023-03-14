@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs;
 
-
 import com.google.api.core.ApiFuture;
 import com.google.api.gax.rpc.ApiCallContext;
 import java.io.Serializable;

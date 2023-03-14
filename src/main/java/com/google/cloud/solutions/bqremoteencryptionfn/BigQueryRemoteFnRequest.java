@@ -16,9 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn;
 
-
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -32,8 +29,6 @@ import javax.annotation.Nullable;
  *     href="https://cloud.google.com/bigquery/docs/reference/standard-sql/remote-functions#input_format">
  *     Input Format</a>
  */
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-@JsonSerialize
 public record BigQueryRemoteFnRequest(
     String requestId,
     String caller,

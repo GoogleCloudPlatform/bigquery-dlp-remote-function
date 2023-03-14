@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn;
 
-
 import java.util.Map;
 import javax.annotation.Nonnull;
 

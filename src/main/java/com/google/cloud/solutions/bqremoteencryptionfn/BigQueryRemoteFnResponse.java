@@ -18,9 +18,6 @@ package com.google.cloud.solutions.bqremoteencryptionfn;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 
 /**
@@ -32,9 +29,6 @@ import java.util.List;
  *     href="https://cloud.google.com/bigquery/docs/reference/standard-sql/remote-functions#output_format">
  *     Output Format</a>
  */
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record BigQueryRemoteFnResponse(List<?> replies, String errorMessage) {
 
   public static BigQueryRemoteFnResponse withReplies(List<?> replies) {
