@@ -25,14 +25,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.dlp.DlpFn.DlpClientFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.BaseUnaryApiFuture.ApiFutureFactory;
-import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.Base64EncodingDlpStub;
-import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.MappingDeidentifyTemplateCallerFactory;
-import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.PatchyDlpStub;
-import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.VerifyingReidentifyCallerFactory;
+import com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.flogger.GoogleLogger;
 import com.google.common.io.Resources;
+import com.google.privacy.dlp.v2.DeidentifyContentRequest;
 import com.google.privacy.dlp.v2.DeidentifyTemplate;
 import com.google.privacy.dlp.v2.ReidentifyContentRequest;
 import java.io.BufferedReader;
@@ -267,6 +265,32 @@ public final class BqTransformFnAppTest {
             })
         .add(
             new Object[] {
+              /*testName=*/ "DLP deidentify with inspect-Template",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "deidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1",
+                      "dlp-inspect-template",
+                      "testing-inspect-template-name"),
+                  List.of("Anant"),
+                  List.of("Damle")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(
+                  List.of("QW5hbnQ=", "RGFtbGU="), null),
+              /*factories=*/ List.of(
+                  new VerifyingDeidentifyCallerFactory(
+                      jsonToProto(
+                          loadResourceAsString(
+                              "deidentify_request_with_inspect_template_name.json"),
+                          DeidentifyContentRequest.class),
+                      base64Stub.deidentifyFactory()),
+                  base64Stub.reidentifyFactory())
+            })
+        .add(
+            new Object[] {
               /*testName=*/ "DLP reidentify Single Surrogate",
               /*testRequestJson=*/ testRequest(
                   Map.of(
@@ -352,6 +376,38 @@ public final class BqTransformFnAppTest {
                           jsonToProto(
                               loadResourceAsString(
                                   "single_surrogate_record_primitive_type_transform_reid_request.json"),
+                              ReidentifyContentRequest.class))
+                      .withReidFactory(base64Stub.reidentifyFactory()))
+            })
+        .add(
+            new Object[] {
+              /*testName=*/ "DLP reidentify Record Transform Primitive",
+              /*testRequestJson=*/ testRequest(
+                  Map.of(
+                      "mode",
+                      "reidentify",
+                      "algo",
+                      "dlp",
+                      "dlp-deid-template",
+                      "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2",
+                      "dlp-inspect-template",
+                      "testing-inspect-template"),
+                  List.of("QW5hbnQ="),
+                  List.of("RGFtbGU=")),
+              /*expectedResult=*/ new BigQueryRemoteFnResponse(List.of("Anant", "Damle"), null),
+              /*factories=*/ List.of(
+                  base64Stub.deidentifyFactory(),
+                  MappingDeidentifyTemplateCallerFactory.using(
+                      Map.of(
+                          "projects/test-project-id/locations/test-region1/deidentifyTemplates/template2",
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_record_primitive_type_transform_deid_template.json"),
+                              DeidentifyTemplate.class))),
+                  VerifyingReidentifyCallerFactory.withExpectedRequest(
+                          jsonToProto(
+                              loadResourceAsString(
+                                  "single_surrogate_record_primitive_type_transform_reid_with_inspect_template_request.json"),
                               ReidentifyContentRequest.class))
                       .withReidFactory(base64Stub.reidentifyFactory()))
             })

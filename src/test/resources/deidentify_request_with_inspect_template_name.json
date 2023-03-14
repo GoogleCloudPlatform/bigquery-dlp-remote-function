@@ -1,0 +1,21 @@
+{
+  "parent": "projects/test-project-id/locations/test-region1",
+  "item": {
+    "table": {
+      "headers": [{
+        "name": "bqfnvalue"
+      }],
+      "rows": [{
+        "values": [{
+          "stringValue": "Anant"
+        }]
+      }, {
+        "values": [{
+          "stringValue": "Damle"
+        }]
+      }]
+    }
+  },
+  "inspectTemplateName": "testing-inspect-template-name",
+  "deidentifyTemplateName": "projects/test-project-id/locations/test-region1/deidentifyTemplates/template1"
+}

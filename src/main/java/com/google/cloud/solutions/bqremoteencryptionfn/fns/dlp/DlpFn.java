@@ -21,11 +21,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import com.google.cloud.solutions.bqremoteencryptionfn.fns.UnaryStringArgFn;
-import com.google.privacy.dlp.v2.ContentItem;
-import com.google.privacy.dlp.v2.DeidentifyContentRequest;
-import com.google.privacy.dlp.v2.DeidentifyContentResponse;
-import com.google.privacy.dlp.v2.ReidentifyContentRequest;
-import com.google.privacy.dlp.v2.ReidentifyContentResponse;
+import com.google.privacy.dlp.v2.*;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -75,13 +71,12 @@ public final class DlpFn extends UnaryStringArgFn {
     }
 
     @Override
-    public DlpFn createFn(@Nonnull Map<String, String> options1) {
-      var dlpConfig = DlpConfig.fromJson(options1);
+    public DlpFn createFn(@Nonnull Map<String, String> options) {
       return new DlpFn(
           requestCellCount,
           requestBytes,
           dlpColName,
-          dlpConfig.dlpDeidTemplate(),
+          DlpConfig.fromJson(options),
           dlpClientFactory);
     }
 
@@ -96,19 +91,19 @@ public final class DlpFn extends UnaryStringArgFn {
   private final int requestCellCount;
 
   private final int requestBytes;
-  private final String deidTemplateName;
+  private final DlpConfig dlpConfig;
   private final DlpClientFactory dlpClientFactory;
 
   private DlpFn(
       int requestCellCount,
       int requestBytes,
       String dlpColName,
-      String deidTemplateName,
+      DlpConfig dlpConfig,
       DlpClientFactory dlpClientFactory) {
     this.requestCellCount = requestCellCount;
     this.requestBytes = requestBytes;
     this.dlpColName = dlpColName;
-    this.deidTemplateName = deidTemplateName;
+    this.dlpConfig = dlpConfig;
     this.dlpClientFactory = dlpClientFactory;
   }
 
@@ -124,8 +119,10 @@ public final class DlpFn extends UnaryStringArgFn {
             dlpClient ->
                 table ->
                     DeidentifyContentRequest.newBuilder()
-                        .setParent(extractDlpParent(deidTemplateName))
-                        .setDeidentifyTemplateName(deidTemplateName)
+                        .setParent(extractDlpParent(dlpConfig.deidTemplate()))
+                        .setDeidentifyTemplateName(dlpConfig.deidTemplate())
+                        .setInspectTemplateName(
+                            dlpConfig.hasInspectTemplate() ? dlpConfig.inspectTemplate() : "")
                         .setItem(ContentItem.newBuilder().setTable(table).build())
                         .build())
         .setDlpRequestToTableFn(deidRequest -> deidRequest.getItem().getTable())
@@ -145,12 +142,14 @@ public final class DlpFn extends UnaryStringArgFn {
         .setTableToDlpRequestFnFactory(
             dlpClient -> {
               var deidentifyConfig =
-                  dlpClient.getDeidentifyTemplate(deidTemplateName).getDeidentifyConfig();
+                  dlpClient.getDeidentifyTemplate(dlpConfig.deidTemplate()).getDeidentifyConfig();
               return (table) ->
                   DlpReIdRequestMaker.forConfig(deidentifyConfig)
                       .makeRequest(ContentItem.newBuilder().setTable(table))
                       .toBuilder()
-                      .setParent(extractDlpParent(deidTemplateName))
+                      .setParent(extractDlpParent(dlpConfig.deidTemplate()))
+                      .setInspectTemplateName(
+                          dlpConfig.hasInspectTemplate() ? dlpConfig.inspectTemplate() : "")
                       .build();
             })
         .setDlpRequestToTableFn(reidRequest -> reidRequest.getItem().getTable())
