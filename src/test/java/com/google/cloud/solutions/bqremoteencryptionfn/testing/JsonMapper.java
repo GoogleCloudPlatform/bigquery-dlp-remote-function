@@ -16,16 +16,15 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.testing;
 
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
 
 public final class JsonMapper {
 
-  private static final ObjectMapper jsonMapper = new ObjectMapper();
+  private static final Gson jsonMapper = new Gson();
 
   public static <T> String toJson(T obj) {
     try {
@@ -33,18 +32,14 @@ public final class JsonMapper {
         return JsonFormat.printer().print(proto);
       }
 
-      return jsonMapper.writeValueAsString(obj);
-    } catch (InvalidProtocolBufferException | JsonProcessingException e) {
+      return jsonMapper.toJson(obj);
+    } catch (InvalidProtocolBufferException e) {
       return "";
     }
   }
 
   public static <T> T fromJson(String json, Class<T> clazz) {
-    try {
-      return jsonMapper.readValue(json, clazz);
-    } catch (JsonProcessingException e) {
-      return null;
-    }
+    return jsonMapper.fromJson(json, TypeToken.get(clazz));
   }
 
   @SuppressWarnings("unchecked") // Use of generics for creation of Proto message from JSON.

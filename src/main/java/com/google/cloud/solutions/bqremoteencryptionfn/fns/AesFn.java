@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
-
 import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.BaseEncoding;

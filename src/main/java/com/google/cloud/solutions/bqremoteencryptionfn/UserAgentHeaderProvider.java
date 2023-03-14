@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn;
 
-
 import com.google.api.gax.rpc.HeaderProvider;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;

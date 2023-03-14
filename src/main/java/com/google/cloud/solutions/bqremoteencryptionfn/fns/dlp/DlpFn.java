@@ -45,8 +45,6 @@ import org.springframework.stereotype.Component;
 public final class DlpFn extends UnaryStringArgFn {
   public static final String FN_NAME = "dlp";
 
-  public static final String DLP_DEID_TEMPLATE_KEY = "dlp-deid-template";
-
   private static final Pattern TEMPLATE_LOCATION_REGEX =
       Pattern.compile("^projects/(?<project>[^/]+)/locations/(?<location>[^/]+)");
 
@@ -77,10 +75,14 @@ public final class DlpFn extends UnaryStringArgFn {
     }
 
     @Override
-    public DlpFn createFn(@Nonnull Map<String, String> options) {
-      var deidTemplateName = options.get(DLP_DEID_TEMPLATE_KEY);
+    public DlpFn createFn(@Nonnull Map<String, String> options1) {
+      var dlpConfig = DlpConfig.fromJson(options1);
       return new DlpFn(
-          requestCellCount, requestBytes, dlpColName, deidTemplateName, dlpClientFactory);
+          requestCellCount,
+          requestBytes,
+          dlpColName,
+          dlpConfig.dlpDeidTemplate(),
+          dlpClientFactory);
     }
 
     @Override

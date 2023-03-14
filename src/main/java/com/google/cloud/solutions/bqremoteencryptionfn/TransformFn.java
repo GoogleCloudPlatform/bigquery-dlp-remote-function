@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn;
 
-
 import java.util.List;
 
 /** Interface describing a general contract for any tokenization algorithm. */

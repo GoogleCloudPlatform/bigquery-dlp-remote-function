@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.fns;
 
-
 import com.google.cloud.solutions.bqremoteencryptionfn.TransformFnFactory;
 import java.util.List;
 import java.util.Map;

@@ -16,7 +16,6 @@
 
 package com.google.cloud.solutions.bqremoteencryptionfn.testing.stubs.dlp;
 
-
 import com.google.api.core.ApiFuture;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.UnaryCallable;
