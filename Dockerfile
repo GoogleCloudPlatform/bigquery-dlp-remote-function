@@ -24,6 +24,6 @@ FROM eclipse-temurin:17-jre-focal
 COPY --from=build-test /bigquery-dlp-remote-function-src/build/libs/bigquery-dlp-remote-function-0.1.0-SNAPSHOT.jar .
 # Run the web service on container startup.
 RUN groupadd -r apprunner && useradd -rm -g apprunner apprunner
-RUN chown apprunner ./bigquery-dlp-remote-function-0.0.1-SNAPSHOT.jar
+RUN chown apprunner ./bigquery-dlp-remote-function-0.1.0-SNAPSHOT.jar
 USER apprunner
-CMD ["java", "-jar", "bigquery-dlp-remote-function-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "bigquery-dlp-remote-function-0.1.0-SNAPSHOT.jar"]
