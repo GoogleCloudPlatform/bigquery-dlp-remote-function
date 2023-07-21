@@ -14,24 +14,13 @@
 # limitations under the License.
 #
 
-#---
-
 ## Define variables
-
-variable "run_code" {
-  type = string
-  description = "provide a random string for a deployment"
-}
 
 variable "project_id" {
   type = string
 }
 
 variable "region" {
-  type = string
-}
-
-variable "zone" {
   type = string
 }
 
@@ -58,25 +47,6 @@ variable "service_name" {
   default = "bq-transform-fns"
 }
 
-variable "aes_key_name" {
-  default = "bq-transform-fns-aes-key"
-}
-
-variable "aes_key_type" {
-  default = "BASE64_KEY"
-  type    = string
-}
-
-variable "aes_cipher_type" {
-  default = "AES/CBC/PKCS5PADDING"
-  type    = string
-}
-
-variable "aes_iv_key_name" {
-  default = "bq-transform-fns-iv"
-}
-
-
 ######################################
 ##    Initializing Cloud Services   ##
 ######################################
@@ -95,18 +65,6 @@ terraform {
   }
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
-  zone = var.zone
-}
-
-provider "google-beta" {
-  project = var.project_id
-  region  = var.region
-  zone = var.zone
-}
-
 ###################################
 ##    Creating Cloud Resources   ##
 ###################################
@@ -115,71 +73,6 @@ provider "google-beta" {
 resource "google_service_account" "run_service_account" {
   account_id = "${var.service_name}-runner"
   project    = var.project_id
-}
-
-resource "google_secret_manager_secret" "cloud_secret_aes_key" {
-  secret_id = var.aes_key_name
-  project   = var.project_id
-  replication {
-    automatic = true
-  }
-}
-
-resource "google_secret_manager_secret" "cloud_secret_aes_iv_key" {
-  secret_id = var.aes_iv_key_name
-  project   = var.project_id
-  replication {
-    automatic = true
-  }
-
-}
-
-resource "random_id" "aes_key_random_generator" {
-  byte_length = 16
-
-  keepers = {
-    run_code = var.run_code
-  }
-}
-
-resource "random_id" "aes_iv_random_generator" {
-  byte_length = 16
-
-  keepers = {
-    run_code = var.run_code
-  }
-}
-
-resource "google_secret_manager_secret_version" "cloud_secret_aes_key_data" {
-  secret = google_secret_manager_secret.cloud_secret_aes_key.id
-
-  secret_data = random_id.aes_key_random_generator.b64_std
-}
-
-resource "google_secret_manager_secret_version" "cloud_secret_aes_iv_key_data" {
-  secret = google_secret_manager_secret.cloud_secret_aes_iv_key.id
-
-  secret_data = random_id.aes_iv_random_generator.b64_std
-}
-
-resource "google_secret_manager_secret_iam_binding" "binding_aes_key" {
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.cloud_secret_aes_key.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-
-  members = [
-    "serviceAccount:${google_service_account.run_service_account.email}"
-  ]
-}
-
-resource "google_secret_manager_secret_iam_binding" "binding_iv_key" {
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.cloud_secret_aes_iv_key.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-
-  members = [
-    "serviceAccount:${google_service_account.run_service_account.email}"
-  ]
 }
 
 resource "google_project_iam_binding" "grant_dlp_deidentifyTemplateReader_role" {
@@ -211,7 +104,8 @@ resource "random_id" "build_version" {
   byte_length = 8
 
   keepers = {
-    run_code = var.run_code
+    project_id = var.project_id
+    region =var.region
   }
 }
 
@@ -323,7 +217,8 @@ resource "random_id" "random_de_id_template_id_random" {
   byte_length = 8
   prefix = "bqdlpfn_"
   keepers = {
-    run_code = var.run_code
+    project_id = var.project_id
+    region = var.region
   }
 }
 

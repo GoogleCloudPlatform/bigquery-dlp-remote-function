@@ -20,6 +20,7 @@ plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.17.0'
     id 'org.springframework.boot' version '3.1.0'
+    id 'jacoco'
     id 'com.google.cloud.tools.jib' version '3.3.2'
     id 'idea'
 }
@@ -30,7 +31,7 @@ sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
 
 def floggerVersion = "0.7.4"
-def springBootVersion = "3.1.0"
+def springBootVersion = "3.1.2"
 def protobufVersion = "3.22.3"
 
 configurations {
@@ -89,9 +90,14 @@ tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
 }
 
+jacoco {
+    toolVersion = "0.8.9"
+}
+
 test {
     useJUnit()
     dependsOn cleanTest
+    finalizedBy jacocoTestReport
     testLogging {
         events "passed", "skipped", "failed", "standardOut", "standardError"
         showStandardStreams = true
@@ -99,9 +105,16 @@ test {
     }
 }
 
+jacocoTestReport {
+    reports {
+        csv.required = false
+        xml.required = true
+        html.required = false
+    }
+}
+
 def licenseLines = new File("ApacheHeader").readLines()
 def licenseJava = "/*\n" + licenseLines.collect(ln -> " *" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n */\n\n"
-def licenseWithHash = "#\n" + licenseLines.collect(ln -> "#" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n#\n\n"
 def licenseWithForwardSlashes = "//\n" + licenseLines.collect(ln -> "//" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n//\n\n"
 
 spotless {
@@ -151,15 +164,6 @@ spotless {
 
     format "misc", {
         target "**/.gitignore", "*.xml", "src/**/*.xml"
-        indentWithSpaces(2)
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-
-    format "terraform", {
-        target "**/*.tf", "**/*.tfvars"
-        targetExclude ".terraform/*"
-        licenseHeader(licenseWithHash, "#---")
         indentWithSpaces(2)
         trimTrailingWhitespace()
         endWithNewline()
