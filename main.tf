@@ -31,7 +31,7 @@ variable "artifact_registry_name" {
 
 variable "bq_dataset" {
   type = string
-  default = "remote_fns"
+  default = "fns"
 }
 
 variable "dlp_deid_template_json_file" {
