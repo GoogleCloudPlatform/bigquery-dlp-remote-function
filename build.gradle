@@ -82,7 +82,7 @@ dependencies {
 
 jib {
     from {
-        image = 'eclipse-temurin:17-jre'
+        image = 'eclipse-temurin:17-jre@sha256:318453c078b2a99955c0f3a947ae3e332cd743ab32510cdc36ecf4c8667e5669'
     }
 }
 
