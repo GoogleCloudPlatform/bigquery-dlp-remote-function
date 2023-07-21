@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+
 plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.17.0'
-    id 'org.springframework.boot' version '3.0.4'
-    id 'jacoco'
+    id 'org.springframework.boot' version '3.1.0'
+    id 'com.google.cloud.tools.jib' version '3.3.2'
     id 'idea'
 }
 
@@ -28,8 +30,8 @@ sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
 
 def floggerVersion = "0.7.4"
-def springBootVersion = "3.0.4"
-def protobufVersion = "3.22.2"
+def springBootVersion = "3.1.0"
+def protobufVersion = "3.22.3"
 
 configurations {
     compileOnly {
@@ -45,7 +47,7 @@ repositories {
 dependencies {
 
     // Commons library deps
-    implementation "com.google.guava:guava:31.1-jre"
+    implementation "com.google.guava:guava:32.0.1-jre"
     implementation "com.google.code.gson:gson:2.10.1"
 
     // Logging framework
@@ -54,7 +56,7 @@ dependencies {
     runtimeOnly "com.google.flogger:flogger-system-backend:${floggerVersion}"
 
     // Google Cloud Service Client Libraries
-    implementation "com.google.cloud:google-cloud-dlp:3.9.0"
+    implementation "com.google.cloud:google-cloud-dlp:3.23.0"
 
     //Spring deps
     implementation ("org.springframework.boot:spring-boot-starter-web:${springBootVersion}") {
@@ -65,7 +67,8 @@ dependencies {
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
 
     // Test Deps
-    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.9.2"
     testImplementation "com.google.truth:truth:1.1.3"
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
 
@@ -76,27 +79,30 @@ dependencies {
 
 }
 
+jib {
+    from {
+        image = 'eclipse-temurin:17-jre'
+    }
+}
+
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
 }
 
-jacoco {
-    toolVersion = "0.8.8"
-}
-
 test {
+    useJUnit()
     dependsOn cleanTest
-    testLogging.showStandardStreams = true
-    finalizedBy jacocoTestReport
-}
-
-jacocoTestReport {
-    reports {
-        csv.required = false
-        xml.required = true
-        html.required = true
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+        showStandardStreams = true
+        exceptionFormat = TestExceptionFormat.FULL
     }
 }
+
+def licenseLines = new File("ApacheHeader").readLines()
+def licenseJava = "/*\n" + licenseLines.collect(ln -> " *" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n */\n\n"
+def licenseWithHash = "#\n" + licenseLines.collect(ln -> "#" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n#\n\n"
+def licenseWithForwardSlashes = "//\n" + licenseLines.collect(ln -> "//" + (ln.matches("^.+")? " " : "") + ln).join("\n") + "\n//\n\n"
 
 spotless {
     java {
@@ -107,22 +113,7 @@ spotless {
         importOrder()
         trimTrailingWhitespace()
         endWithNewline()
-        licenseHeader "/*\n" +
-                " * Copyright \$YEAR Google LLC\n" +
-                " *\n" +
-                " * Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
-                " * you may not use this file except in compliance with the License.\n" +
-                " * You may obtain a copy of the License at\n" +
-                " *\n" +
-                " *     https://www.apache.org/licenses/LICENSE-2.0\n" +
-                " *\n" +
-                " * Unless required by applicable law or agreed to in writing, software\n" +
-                " * distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
-                " * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
-                " * See the License for the specific language governing permissions and\n" +
-                " * limitations under the License.\n" +
-                " */\n" +
-                "\n"
+        licenseHeader(licenseJava)
     }
 
     kotlin {
@@ -131,6 +122,7 @@ spotless {
         trimTrailingWhitespace()
         indentWithSpaces(2)
         endWithNewline()
+        licenseHeader(licenseJava)
     }
 
     freshmark {
@@ -142,19 +134,7 @@ spotless {
 
     format "proto", {
         target "**/*.proto"
-        licenseHeader("// Copyright \$YEAR Google LLC\n" +
-                "//\n" +
-                "// Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
-                "// you may not use this file except in compliance with the License.\n" +
-                "// You may obtain a copy of the License at\n" +
-                "//\n" +
-                "//     https://www.apache.org/licenses/LICENSE-2.0\n" +
-                "//\n" +
-                "// Unless required by applicable law or agreed to in writing, software\n" +
-                "// distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
-                "// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
-                "// See the License for the specific language governing permissions and\n" +
-                "// limitations under the License.", "syntax")
+        licenseHeader(licenseWithForwardSlashes, "syntax")
         indentWithSpaces(2)
         trimTrailingWhitespace()
         endWithNewline()
@@ -166,10 +146,20 @@ spotless {
         indentWithSpaces(2)
         trimTrailingWhitespace()
         endWithNewline()
+        licenseHeader(licenseJava, "(import|plugins|rootProject)")
     }
 
     format "misc", {
         target "**/.gitignore", "*.xml", "src/**/*.xml"
+        indentWithSpaces(2)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+
+    format "terraform", {
+        target "**/*.tf", "**/*.tfvars"
+        targetExclude ".terraform/*"
+        licenseHeader(licenseWithHash, "#---")
         indentWithSpaces(2)
         trimTrailingWhitespace()
         endWithNewline()
