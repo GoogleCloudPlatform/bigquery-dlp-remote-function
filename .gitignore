@@ -1,3 +1,8 @@
+# Ignore terraform folder
+.terraform/
+.terraform.lock.*
+terraform.tfstate*
+
 # Ignore any offline repositories the user may have created.
 **/offline-repository/**/*
 

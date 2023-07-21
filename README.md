@@ -77,44 +77,52 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
         git clone https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function.git
         cd bigquery-dlp-remote-function/
 
-## Deployment script
-
-1.  Use a text editor to modify the `deploy.sh` file to set the Google Cloud project id and the cloud region that you want to deploy the resources:
-
-    ```shell-script
-    # Project Id of the Google Cloud Project
-    PROJECT_ID=""
-
-    # Google Cloud Region to use for deployment of resources
-    # Refer to https://cloud.google.com/compute/docs/regions-zones#available
-    REGION=""
-    ```
-
-1.  Run the script
+2.  Enable all the required Google Cloud APIs
 
     ```shell
-    ./deploy.sh
+    gcloud services enable \
+    artifactregistry.googleapis.com \
+    bigquery.googleapis.com \
+    bigqueryconnection.googleapis.com \
+    cloudbuild.googleapis.com \
+    cloudkms.googleapis.com \
+    containerregistry.googleapis.com \
+    dlp.googleapis.com \
+    run.googleapis.com \
+    secretmanager.googleapis.com
     ```
 
-   1.  Once the script successfully completes resources creation,
-       visit [BigQuery Console](https://console.cloud.google.com/bigquery)
-       to run the test SQL script
+## Deployment script
 
-       ```sql
-       SELECT
-        pii_column,
-        fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
-        fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-        fns.aes128cbc_encrypt(pii_column) AS aes_cbc_encrypted,
-        fns.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_cbc_decrypted
-        FROM
-          UNNEST(
-            [
-                'My name is John Doe. My email is john@doe.com',
-                'Some non PII data',
-                '212-233-4532',
-                'some script with simple number 1234']) AS pii_column
-       ```
+1.  Authenticate using User [Application Default Credentials ("ADCs")](https://cloud.google.com/sdk/gcloud/reference/auth/application-default) as a primary authentication method.
+    ```shell
+    gcloud auth application-default login
+    ```
+
+2.  Initialize and run the Terraform script to create all resources:
+
+    ```shell
+    terraform init && \
+    terraform apply
+    ```
+
+3.  Once the script successfully completes resources creation,
+    visit [BigQuery Console](https://console.cloud.google.com/bigquery)
+    to run the test SQL script
+
+    ```sql
+    SELECT
+    pii_column,
+    fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
+    fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted
+    FROM
+     UNNEST(
+       [
+           'My name is John Doe. My email is john@doe.com',
+           'Some non PII data',
+           '212-233-4532',
+           'some script with simple number 1234']) AS pii_column
+      ```
 
 
 ## Detailed Deployment steps
@@ -126,13 +134,15 @@ In case you want to customize the deployment, please use following steps:
 1.  Enable APIs for Compute Engine, Cloud Storage, Dataproc, and Cloud SQL services:
 
     ```shell
-    gcloud services enable \
+    gcloud services enable --project "${PROJECT_ID}" \
+    artifactregistry.googleapis.com \
     bigquery.googleapis.com \
     bigqueryconnection.googleapis.com \
     cloudbuild.googleapis.com \
     cloudkms.googleapis.com \
     containerregistry.googleapis.com \
     dlp.googleapis.com \
+    iam.googleapis.com \
     run.googleapis.com \
     secretmanager.googleapis.com
     ```
@@ -142,44 +152,8 @@ In case you want to customize the deployment, please use following steps:
     ```shell
     PROJECT_ID="<PROJECT_ID>"
     REGION="<REGION_ID>"
+    ARTIFACT_REGISTRY_NAME="<ARTIFACT_DOCKER_REGISTRY_NAME>"
     CLOUD_RUN_SERVICE_NAME="bq-transform-fns"
-    CLOUD_SECRET_KEY_NAME="${CLOUD_RUN_SERVICE_NAME}-aes-key"
-    CLOUD_SECRET_IV_NAME="${CLOUD_RUN_SERVICE_NAME}-iv"
-    ```
-
-### Create Cloud Secret
-
-You should use [Cloud Secrets](https://cloud.google.com/secrets) to store and
-[set the Environment Variable](https://cloud.google.com/run/docs/configuring/secrets) `AES_KEY` for securely store
-the AES Encryption key.
-
-1.  Set the plaintext 128-bit encryption key
-    ```shell
-    AES_CIPHER_TYPE="AES/CBC/PKCS5PADDING"
-    AES_ENCRYPTION_KEY_BASE64="$(dd if=/dev/urandom count=1 bs=16 | base64)"
-    AES_KEY_TYPE="BASE64_KEY"
-    AES_IV_PARAMETER_BASE64="$(dd if=/dev/urandom count=1 bs=16 | base64)"
-    ```
-
-1.  Create Cloud Secret for AES KEY
-    ```shell
-    printf '%s' "${AES_ENCRYPTION_KEY_BASE64}" | \
-    gcloud secrets create ${CLOUD_SECRET_KEY_NAME} \
-    --data-file=- \
-    --locations=${REGION} \
-    --replication-policy=user-managed \
-    --project=${PROJECT_ID}
-    ```
-
-1.  Create Cloud Secret for AES IV
-
-    ```shell
-    printf '%s' "${AES_IV_PARAMETER_BASE64}" | \
-    gcloud secrets create ${CLOUD_SECRET_IV_NAME} \
-    --data-file=- \
-    --locations="${REGION}" \
-    --replication-policy=user-managed \
-    --project="${PROJECT_ID}"
     ```
 
 ### Create Service Account for Cloud Run service
@@ -199,14 +173,9 @@ individual services is recommended.
     --display-name "${RUNNER_SA_NAME}"
     ```
 
-1.  Grant permissions to the service account to access Cloud Secrets Manager and
-    DLP
+1.  Grant permissions to the service account to access DLP
 
     ```shell
-    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member="serviceAccount:${RUNNER_SA_EMAIL}" \
-    --role='roles/secretmanager.secretAccessor'
-
     gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${RUNNER_SA_EMAIL}" \
     --role='roles/dlp.deidentifyTemplatesReader'
@@ -216,36 +185,41 @@ individual services is recommended.
     --role='roles/dlp.user'
     ```
 
+### Create Artifact Registry
+This is a containerized SpringBoot application.
+Create an [Artifact Registry](https://cloud.google.com/artifact-registry) to store the application's container image
+
+```shell
+gcloud artifacts repositories create "${ARTIFACT_REGISTRY_NAME}" \
+--repository-format=docker \
+--location="${REGION}" \
+--description="Docker repository for Bigquery Functions" \
+--project="${PROJECT_ID}"
+```
+
 ### Deploy Cloud Run service
 
-1.  Deploy Cloud Run by compiling and deploying Container using [Cloud Build](https://cloud.google.com/build):
+1. Build the application container image using [Cloud Build](https://cloud.google.com/build):
+    ```shell
+    gcloud builds submit . \
+    --project="${PROJECT_ID}" \
+    --substitutions=_CONTAINER_IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_NAME}/${CLOUD_RUN_SERVICE_NAME}:latest" \
+    --machine-type=e2-highcpu-8
+    ```
+
+2. Deploy Cloud Run by compiling and deploying Container :
 
     ```shell
-    gcloud builds submit \
-    --project ${PROJECT_ID} \
-    --tag "gcr.io/${PROJECT_ID}/${CLOUD_RUN_SERVICE_NAME}" \
-    --machine-type=e2-highcpu-8 && \
     gcloud beta run deploy ${CLOUD_RUN_SERVICE_NAME} \
-    --image="gcr.io/${PROJECT_ID}/${CLOUD_RUN_SERVICE_NAME}:latest" \
+    --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_NAME}/${CLOUD_RUN_SERVICE_NAME}:latest" \
     --execution-environment=gen2 \
     --platform=managed \
     --region="${REGION}" \
     --service-account="${RUNNER_SA_EMAIL}" \
     --update-env-vars=PROJECT_ID=${PROJECT_ID} \
-    --update-env-vars=AES_KEY_TYPE=${AES_KEY_TYPE} \
-    --update-env-vars=AES_CIPHER_TYPE=${AES_CIPHER_TYPE} \
-    --update-secrets=AES_KEY=${CLOUD_SECRET_KEY_NAME}:latest \
-    --update-secrets=AES_IV_PARAMETER_BASE64=${CLOUD_SECRET_IV_NAME}:latest \
     --no-allow-unauthenticated \
     --project ${PROJECT_ID}
     ```
-
-    > **Note:** The application uses following defaults for AES encryption:
-    > You can change this behaviour by either
-    > changing the ENV variables or `src/main/resources/aes.properties`
-    >
-    > `AES_KEY_TYPE` : `BASE64_KEY`
-    > `AES_CIPHER_TYPE` : `AES/CBC/PKCS5PADDING`
 
 1.  Retrieve and save the Cloud Run URL:
 
@@ -318,47 +292,7 @@ DEID_TEMPLATE_NAME=$(echo ${DEID_TEMPLATE} | jq -r '.name')
     ${BQ_FUNCTION_DATASET}
     ```
 
-### Create BigQuery Remote functions
-
-#### Create AES Remote functions
-
-1.  Create AES de-identification function:
-
-    ```shell
-    bq query --project_id ${PROJECT_ID} \
-    --use_legacy_sql=false \
-    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(v STRING)
-    RETURNS STRING
-    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'deidentify'),('algo','aes')]);"
-    ```
-
-1.  Create AES re-identify function:
-
-    ```shell
-    bq query --project_id ${PROJECT_ID} \
-    --use_legacy_sql=false \
-    "CREATE OR REPLACE FUNCTION ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(v STRING)
-    RETURNS STRING
-    REMOTE WITH CONNECTION \`${PROJECT_ID}.${REGION}.ext-${CLOUD_RUN_SERVICE_NAME}\`
-    OPTIONS (endpoint = '${RUN_URL}', user_defined_context = [('mode', 'reidentify'),('algo','aes')]);"
-    ```
-
-#### Create DLP Remote functions
-
-1.  Create Deidentify template [using the Cloud Console](https://cloud.google.com/dlp/docs/creating-templates-deid) or sample configuration below:
-
-    ```shell
-    DEID_TEMPLATE=$(curl -X POST \
-    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    -H "X-Goog-User-Project: ${PROJECT_ID}" \
-    --data-binary "@sample_dlp_deid_config.json" \
-    "https://dlp.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/deidentifyTemplates")
-
-    DEID_TEMPLATE_NAME=$(echo "${DEID_TEMPLATE}" | jq -r '.name')
-    ```
+### Create BigQuery Remote functions for DLP
 
 1.  Create DLP de-identification function:
 
@@ -400,9 +334,7 @@ and reidentifying the data using SQL:
     SELECT
         pii_column,
         fns.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
-        fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-        fns.aes128cbc_encrypt(pii_column) AS aes_encrypted,
-        fns.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_decrypted
+        fns.dlp_freetext_decrypt(fns.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted
     FROM
         UNNEST(
         [
@@ -421,9 +353,7 @@ and reidentifying the data using SQL:
     SELECT
       pii_column,
       ${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column) AS dlp_encrypted,
-      ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted,
-      ${BQ_FUNCTION_DATASET}.aes128cbc_encrypt(pii_column) AS aes_encrypted,
-      ${BQ_FUNCTION_DATASET}.aes128cbc_decrypt(fns.aes128cbc_encrypt(pii_column)) AS aes_decrypted
+      ${BQ_FUNCTION_DATASET}.dlp_freetext_decrypt(${BQ_FUNCTION_DATASET}.dlp_freetext_encrypt(pii_column)) AS dlp_decrypted
     FROM
       UNNEST(
         [

@@ -1,0 +1,10 @@
+---
+steps:
+  - name: gradle:8.2.1-jdk17
+    args: [
+      'gradle',
+      'clean',
+      'build',
+      'jib',
+      '-Djib.to.image=${_CONTAINER_IMAGE_NAME}'
+    ]
