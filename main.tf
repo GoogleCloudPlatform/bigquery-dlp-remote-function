@@ -14,55 +14,14 @@
 # limitations under the License.
 #
 
-## Define variables
-
-variable "project_id" {
-  type = string
-}
-
-variable "region" {
-  type = string
-}
-
-variable "artifact_registry_name" {
-  type = string
-  default = "bq-remote-functions"
-}
-
-variable "bq_dataset" {
-  type = string
-  default = "fns"
-}
-
-variable "dlp_deid_template_json_file" {
-  type = string
-  default = "sample_dlp_deid_config.json"
-}
-
-variable "dlp_inspect_template_full_path" {
-  default = ""
-}
-
-variable "service_name" {
-  default = "bq-transform-fns"
-}
-
 ######################################
 ##    Initializing Cloud Services   ##
 ######################################
 
-terraform {
-  required_providers {
-    google = {
-      source = "hashicorp/google"
-      version = "4.74.0"
-    }
-
-    google-beta = {
-      source = "hashicorp/google-beta"
-      version = "4.74.0"
-    }
-  }
+provider "google" {
+  billing_project = var.project_id
+  project = var.project_id
+  region = var.region
 }
 
 ###################################
@@ -75,20 +34,14 @@ resource "google_service_account" "run_service_account" {
   project    = var.project_id
 }
 
-resource "google_project_iam_binding" "grant_dlp_deidentifyTemplateReader_role" {
+resource "google_project_iam_member" "grant_role_to_sa" {
+  for_each = toset([
+    "roles/dlp.reader",
+    "roles/dlp.user",
+  ])
   project = var.project_id
-  role    = "roles/dlp.deidentifyTemplatesReader"
-  members = [
-    "serviceAccount:${google_service_account.run_service_account.email}"
-  ]
-}
-
-resource "google_project_iam_binding" "grant_dlp_user_role" {
-  project = var.project_id
-  role    = "roles/dlp.user"
-  members = [
-    "serviceAccount:${google_service_account.run_service_account.email}"
-  ]
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.run_service_account.email}"
 }
 
 resource "google_artifact_registry_repository" "image_registry" {
@@ -146,46 +99,16 @@ resource "google_cloud_run_v2_service" "bq_function" {
   depends_on = [null_resource.build_function_image]
 
   template {
+    service_account = google_service_account.run_service_account.email
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+
     containers {
       image = null_resource.build_function_image.triggers.full_image_path
       env {
         name  = "PROJECT_ID"
         value = var.project_id
       }
-
-#      env {
-#        name  = "AES_KEY_TYPE"
-#        value = var.aes_key_type
-#      }
-#
-#      env {
-#        name  = "AES_CIPHER_TYPE"
-#        value = var.aes_cipher_type
-#      }
-#
-#
-#      env {
-#        name = "AES_KEY"
-#        value_source {
-#          secret_key_ref {
-#            secret  = google_secret_manager_secret.cloud_secret_aes_key.secret_id
-#            version = "latest"
-#          }
-#        }
-#      }
-#
-#      env {
-#        name = "AES_IV_PARAMETER_BASE64"
-#        value_source {
-#          secret_key_ref {
-#            secret  = google_secret_manager_secret.cloud_secret_aes_iv_key.secret_id
-#            version = "latest"
-#          }
-#        }
-#      }
     }
-    service_account = google_service_account.run_service_account.email
-
   }
 }
 
@@ -246,7 +169,6 @@ curl -s https://dlp.googleapis.com/v2/projects/${self.triggers.project_id}/locat
 --header 'Content-Type: application/json' \
 --data '${jsonencode(local.de_identify_template_json)}'
 EOF
-
   }
 
   provisioner "local-exec" {
@@ -259,7 +181,6 @@ https://dlp.googleapis.com/v2/${self.triggers.dlp_de_id_template_full_path} \
 --header 'Accept: application/json' \
 --header "Content-Type: application/json"
 EOF
-
   }
 }
 
