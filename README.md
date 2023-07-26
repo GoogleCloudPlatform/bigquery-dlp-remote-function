@@ -164,7 +164,7 @@ individual services is recommended.
 1.  Create a service Account:
 
     ```shell
-    RUNNER_SA_NAME="${CLOUD_RUN_SERVICE_NAME}-runner-$(dd if=/dev/random count=1 bs=3 | base64)"
+    RUNNER_SA_NAME="${CLOUD_RUN_SERVICE_NAME}-runner"
     RUNNER_SA_EMAIL="${RUNNER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
     gcloud iam service-accounts create "${RUNNER_SA_NAME}" \
