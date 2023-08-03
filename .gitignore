@@ -1,6 +1,6 @@
 # Ignore terraform folder
 .terraform/
-.terraform.lock.*
+!.terraform.lock.hcl
 terraform.tfstate*
 
 # Ignore any offline repositories the user may have created.
