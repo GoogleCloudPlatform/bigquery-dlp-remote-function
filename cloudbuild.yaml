@@ -1,6 +1,6 @@
 ---
 steps:
-  - name: gradle:8.2.1-jdk17
+  - name: gradle:8.4-jdk21-alpine
     args: [
       'gradle',
       'clean',
