@@ -28,15 +28,8 @@ plugins {
 group = 'com.google.cloud.solutions'
 version = '0.1.1-SNAPSHOT'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-        vendor = JvmVendorSpec.ADOPTIUM //Eclipse Temurin
-    }
-}
+sourceCompatibility = JavaVersion.VERSION_21
+targetCompatibility = JavaVersion.VERSION_21
 
 
 def floggerVersion = "0.8"
