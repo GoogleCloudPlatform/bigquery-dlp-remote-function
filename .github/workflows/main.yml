@@ -52,7 +52,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
-          languages: ${{ matrix.language }}
+          languages: java
           queries: security-and-quality
 
       - name: Build and Test
@@ -60,24 +60,6 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
-
-      - name: Cache Build Output Folder
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ./build
-          key: build_output-${{ github.run_id }}
-
-  send_to_codecov:
-    runs-on: ubuntu-latest
-    needs: build_and_test
-    steps:
-      - name: Restore Cache from BuildJob
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ./build
-          key: build_output-${{ github.run_id }}
 
       - name: Upload CodeCov
         uses: codecov/codecov-action@v3
