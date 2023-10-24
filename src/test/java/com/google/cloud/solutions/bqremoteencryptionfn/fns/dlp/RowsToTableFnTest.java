@@ -90,27 +90,27 @@ public final class RowsToTableFnTest {
       return ImmutableList.<Object[]>builder()
           .add(
               new Object[] {
-                /*testCaseName=*/ "Exact row split",
-                /*maxCellCount=*/ 10,
-                /*maxBytes=*/ DlpRequestBatchExecutor.REQUEST_MAX_BYTES,
-                /*testRows=*/ makeRows("Some String", 50),
-                /*expectedTablesCount=*/ 5
+                /* testCaseName= */ "Exact row split",
+                /* maxCellCount= */ 10,
+                /* maxBytes= */ DlpRequestBatchExecutor.REQUEST_MAX_BYTES,
+                /* testRows= */ makeRows("Some String", 50),
+                /* expectedTablesCount= */ 5
               })
           .add(
               new Object[] {
-                /*testCaseName=*/ "Extra table, with remainder of rows",
-                /*maxCellCount=*/ 20,
-                /*maxBytes=*/ DlpRequestBatchExecutor.REQUEST_MAX_BYTES,
-                /*testRows=*/ makeRows("TwentyStringers", 58),
-                /*expectedTablesCount=*/ 3
+                /* testCaseName= */ "Extra table, with remainder of rows",
+                /* maxCellCount= */ 20,
+                /* maxBytes= */ DlpRequestBatchExecutor.REQUEST_MAX_BYTES,
+                /* testRows= */ makeRows("TwentyStringers", 58),
+                /* expectedTablesCount= */ 3
               })
           .add(
               new Object[] {
-                /*testCaseName=*/ "Tables split for maxBytes",
-                /*maxCellCount=*/ 50000,
-                /*maxBytes=*/ 100,
-                /*testRows=*/ makeRows("iBaseStringToMakeFiftyBytesSizeOfStringWhyHard", 10),
-                /*expectedTablesCount=*/ 10
+                /* testCaseName= */ "Tables split for maxBytes",
+                /* maxCellCount= */ 50000,
+                /* maxBytes= */ 100,
+                /* testRows= */ makeRows("iBaseStringToMakeFiftyBytesSizeOfStringWhyHard", 10),
+                /* expectedTablesCount= */ 10
               })
           .build();
     }
