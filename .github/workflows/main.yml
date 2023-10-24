@@ -30,6 +30,7 @@ permissions:
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
+    name: Gradle build and CodeQL
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK 21
@@ -58,6 +59,15 @@ jobs:
             ./build
           key: build_output-${{ github.run_id }}
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
   send_to_codecov:
     runs-on: ubuntu-latest
     needs: build_and_test
@@ -75,31 +85,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
           verbose: true
-
-  run_codeql:
-    runs-on: ubuntu-latest
-    needs: build_and_test
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'java' ]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Restore Cache from BuildJob
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ./build
-          key: build_output-${{ github.run_id }}
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
