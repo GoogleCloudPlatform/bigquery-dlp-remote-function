@@ -51,12 +51,12 @@ jobs:
       - name: Execute Build
         run: ./gradlew clean test build assemble
 
-      - name: Cache Build Folder
+      - name: Cache Build Output Folder
         uses: actions/cache/save@v3
         with:
           path: |
             ./build
-          key: build_output-{{ github.sha }}
+          key: build_output-${{ github.run_id }}
 
   send_to_codecov:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
         with:
           path: |
             ./build
-          key: build_output-{{ github.sha }}
+          key: build_output-${{ github.run_id }}
 
       - name: Upload CodeCov
         uses: codecov/codecov-action@v3
@@ -88,18 +88,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-
       - name: Restore Cache from BuildJob
         uses: actions/cache/restore@v3
         with:
           path: |
             ./build
-          key: build_output-{{ github.sha }}
+          key: build_output-${{ github.run_id }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
