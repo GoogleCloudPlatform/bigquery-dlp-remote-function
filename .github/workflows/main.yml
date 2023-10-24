@@ -49,8 +49,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
-      - name: Execute Build
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Build and Test
         run: ./gradlew clean test build assemble
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
 
       - name: Cache Build Output Folder
         uses: actions/cache/save@v3
@@ -58,15 +67,6 @@ jobs:
           path: |
             ./build
           key: build_output-${{ github.run_id }}
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
 
   send_to_codecov:
     runs-on: ubuntu-latest
