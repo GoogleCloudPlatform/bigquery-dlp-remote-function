@@ -34,7 +34,7 @@ targetCompatibility = JavaVersion.VERSION_21
 
 def floggerVersion = "0.8"
 def springBootVersion = "3.1.5"
-def protobufVersion = "3.24.4"
+def protobufVersion = "3.25.1"
 
 configurations {
     compileOnly {
