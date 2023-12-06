@@ -2,22 +2,22 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.terraform.io/hashicorp/google" {
-  version     = "4.76.0"
+  version     = "5.8.0"
   constraints = ">= 4.0.0"
   hashes = [
-    "h1:vVwj/rwzBLLU8NLUPIRP4f+wY7MtP2+6BVqZJqkaD98=",
-    "zh:084d7b550b31333dea22e691cc5ff0dcd41ff6ae9166e68cdc1fe41a72fceba9",
-    "zh:0e7db4c0631b417ae24aac7b32da4773a260484face62faf982ed1a43d444858",
-    "zh:180a40986ca57e7bdba5cad62c9803d97fc6a64c2cdd9854948681cbceb6d507",
-    "zh:687ac120e105f1e6dee33b10c4fa6253d3bb6b053571aa3f0d36509c6bc8f4c8",
-    "zh:711b4654ca558b24bb7c6211e0d59fbdb7e941da59698ac1d6f3e4427108b198",
-    "zh:810a5754751fd19e717420895207b929e26be90501443f9fd02df3c5a6dd7a19",
-    "zh:a27ceeb7a20758cd7dcb3abfc856d7a268abb3e9f7f446c71f3326dd87381b20",
-    "zh:ca89b2c59ac91f5a795eb7eeaba2ff7f1c50342213022f20814e640d5562391c",
-    "zh:d4731a4d7e343981ad7d22b2869f792fa432eceb43e710c6f74a9d1d867fe3d1",
-    "zh:e76b7c124dc9c0f4aff3615751851f70b1120465ee3c379c2aac76f040c6ef42",
-    "zh:e815dc22080253122c59b5b60a77a807816c41cca0505f31cf7db980f9db7a5c",
+    "h1:9mNsWh+t0hMWobCrDScvH215IWj32v/nbJ3jcYnX1M4=",
+    "zh:1e9114e4b6c9886ee37dfb7a2fa5776f2977df44f076fb2ca8d8015a19f2cd2b",
+    "zh:26e319b67f5accd643e9af8b3b9ab96f9f79c625d889d39cb3bca21749ce643f",
+    "zh:3e062a4a31d8a5a2c2cb9b3c6f606a7e45a726b5f160ebca01c9f4aca8eff91e",
+    "zh:5f287a4b46731eae42d56a4ab1b134a6107d1c5faa658d3024c93bdf6cfbd6f0",
+    "zh:646c5ed8f6bda9ad130c1b2441e0b51ea3a59d20d1cc7539efcb562c92cf29c7",
+    "zh:7ecba80bce8c4322def7e72003058de99af653ede72ececb8254a3d5631ad876",
+    "zh:b50a9fcee3f2b37e36052903a4e951f5836c31ef9f76af79a6de7f59c303ae77",
+    "zh:b793d50456b7d2a8902b1c608437c92453ed260d8404c37aebc6b836b31e6a64",
+    "zh:c6cffdc8edac730066c7022d4e94f44a20ae89af4b50a226e1e3ebcb98fe0399",
+    "zh:cdf74d540408d0ef178e18dbc68c9a40751571ef116dabdac097d2b80bbebe8c",
     "zh:f569b65999264a9416862bca5cd2a6177d94ccb0424f3a4ef424428912b9cb3c",
+    "zh:fa141144675905e3c74f80f211e6ebd89d7658b2692305e653fc432ebcaf0a7c",
   ]
 }
 
