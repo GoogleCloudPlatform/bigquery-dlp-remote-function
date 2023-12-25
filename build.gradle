@@ -78,7 +78,7 @@ dependencies {
     // proto json format
     testImplementation "com.google.protobuf:protobuf-java:${protobufVersion}"
     testImplementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
-    testImplementation "com.google.truth.extensions:truth-proto-extension:1.1.5"
+    testImplementation "com.google.truth.extensions:truth-proto-extension:1.2.0"
 
 }
 
