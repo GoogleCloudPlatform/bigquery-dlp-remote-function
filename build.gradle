@@ -20,7 +20,6 @@ plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.23.3'
     id 'org.springframework.boot' version '3.2.1'
-
     id 'jacoco'
     id 'com.google.cloud.tools.jib' version '3.4.0'
     id 'idea'
