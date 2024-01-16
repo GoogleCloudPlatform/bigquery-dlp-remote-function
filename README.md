@@ -2,8 +2,7 @@
 
 *Summary: Learn how to use Remote Functions to de/re-identify data with DLP in BigQuery using SQL.*
 
-[![Build](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/gradle.yml)
-[![CodeQL](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/codeql.yml)
+[![Build and Validate](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/main.yml/badge.svg)](https://github.com/GoogleCloudPlatform/bigquery-dlp-remote-function/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/GoogleCloudPlatform/bigquery-dlp-remote-function/branch/main/graph/badge.svg?token=B25A0dD36P)](https://codecov.io/gh/GoogleCloudPlatform/bigquery-dlp-remote-function)
 
 This document discusses how to detect and de-identify sensitive data like personally identifiable information (PII) in
