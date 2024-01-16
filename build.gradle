@@ -19,21 +19,18 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.23.3'
-    id 'org.springframework.boot' version '3.2.0'
+    id 'org.springframework.boot' version '3.2.1'
     id 'jacoco'
     id 'com.google.cloud.tools.jib' version '3.4.0'
     id 'idea'
 }
 
+apply plugin: 'io.spring.dependency-management'
+
 group = 'com.google.cloud.solutions'
 version = '0.1.1-SNAPSHOT'
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
-
-
 def floggerVersion = "0.8"
-def springBootVersion = "3.2.0"
 def protobufVersion = "3.25.1"
 
 configurations {
@@ -62,18 +59,18 @@ dependencies {
     implementation "com.google.cloud:google-cloud-dlp:3.35.0"
 
     //Spring deps
-    implementation ("org.springframework.boot:spring-boot-starter-web:${springBootVersion}") {
+    implementation ("org.springframework.boot:spring-boot-starter-web:") {
         exclude group: "org.yaml", module: "snakeyaml"
         exclude group: "org.springframework.boot", module: "spring-boot-starter-json"
     }
 
-    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
 
     // Test Deps
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.1"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.1"
     testImplementation "com.google.truth:truth:1.2.0"
-    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 
     // proto json format
     testImplementation "com.google.protobuf:protobuf-java:${protobufVersion}"
@@ -88,7 +85,9 @@ jib {
     }
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     options.encoding = "UTF-8"
 }
 
