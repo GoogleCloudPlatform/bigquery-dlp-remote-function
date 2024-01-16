@@ -73,7 +73,6 @@ dependencies {
     testImplementation "com.google.truth:truth:1.2.0"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
 
-
     // proto json format
     testImplementation "com.google.protobuf:protobuf-java:${protobufVersion}"
     testImplementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
