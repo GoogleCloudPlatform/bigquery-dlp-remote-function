@@ -19,7 +19,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.24.0'
-    id 'org.springframework.boot' version '3.2.1'
+    id 'org.springframework.boot' version '3.2.2'
     id 'jacoco'
     id 'com.google.cloud.tools.jib' version '3.4.0'
     id 'idea'
