@@ -20,8 +20,8 @@ updates:
 - package-ecosystem: "gradle"
   directory: "/"
   schedule:
-    interval: "weekly"
+    interval: "monthly"
 - package-ecosystem: "terraform"
   directory: "/"
   schedule:
-    interval: "weekly"
+    interval: "monthly"
