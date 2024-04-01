@@ -57,7 +57,7 @@ dependencies {
     runtimeOnly "com.google.flogger:flogger-system-backend:${floggerVersion}"
 
     // Google Cloud Service Client Libraries
-    implementation "com.google.cloud:google-cloud-dlp:3.39.0"
+    implementation "com.google.cloud:google-cloud-dlp:3.43.0"
 
     //Spring deps
     implementation ("org.springframework.boot:spring-boot-starter-web:") {
