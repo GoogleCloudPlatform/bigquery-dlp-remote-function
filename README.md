@@ -123,6 +123,42 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
            'some script with simple number 1234']) AS pii_column
       ```
 
+      The query will produce a result similar to following table:
+
+      <table>
+          <thead>
+              <th>Row</th>
+              <th>pii_column</th>
+              <th>dlp_encrypted</th>
+              <th>dlp_decrypted</th>
+          </thead>
+          <tbody>
+              <tr>
+                  <td>1</td>
+                  <td>My name is John Doe. My email is john@doe.com</td>
+                  <td>My name is John Doe. My email is BQ_TRF_EMAIL(40):AQy6lGvwKR+AiiRqJpEr+nBzZUzOcjXkXamUugU=</td>
+                  <td>My name is John Doe. My email is john@doe.com</td>
+              </tr>
+              <tr>
+                  <td>2</td>
+                  <td>Some non PII data</td>
+                  <td>Some non PII data</td>
+                  <td>Some non PII data</td>
+              </tr>
+              <tr>
+                  <td>3</td>
+                  <td>212-233-4532</td>
+                  <td>BQ_TRF_PH(40):AbovCRcD0RwhqTJh1SuQmEfXERQoAmOKxwC2jc8=</td>
+                  <td>212-233-4532</td>
+              </tr>
+              <tr>
+                  <td>4</td>
+                  <td>some script with simple number 1234</td>
+                  <td>some script with simple number 1234</td>
+                  <td>some script with simple number 1234</td>
+              </tr>
+          </tbody>
+      </table>
 
 ## Detailed Deployment steps
 
