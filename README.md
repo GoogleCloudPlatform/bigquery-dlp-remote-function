@@ -158,7 +158,7 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
                   <td>some script with simple number 1234</td>
               </tr>
           </tbody>
-      </table>   
+      </table>
 
 ## Detailed Deployment steps
 
