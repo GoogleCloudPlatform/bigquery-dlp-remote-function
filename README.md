@@ -141,7 +141,7 @@ cleanup easiest at the end of the tutorial, we recommend that you create a new p
               </tr>
               <tr>
                   <td>2</td>
-                  <td>Some non PII data</td>                  
+                  <td>Some non PII data</td>
                   <td>Some non PII data</td>
                   <td>Some non PII data</td>
               </tr>
