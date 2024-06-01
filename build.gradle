@@ -21,7 +21,7 @@ plugins {
     id 'com.diffplug.spotless' version '6.24.0'
     id 'org.springframework.boot' version '3.2.2'
     id 'jacoco'
-    id 'com.google.cloud.tools.jib' version '3.4.0'
+    id 'com.google.cloud.tools.jib' version '3.4.3'
     id 'idea'
 }
 
