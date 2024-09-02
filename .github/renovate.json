@@ -9,5 +9,35 @@
     "replacements:all",
     "workarounds:all"
   ],
-  "dependencyDashboardApproval": true
+  "dependencyDashboardApproval": true,
+  "packageRules": [
+    {
+      "extends": [
+        "packages:googleapis"
+      ],
+      "groupName": "googleapis packages"
+    },
+    {
+      "groupName": "github-workflow",
+      "matchFileNames": [
+        ".github/workflows/main.yml"
+      ]
+    },
+    {
+      "groupName": "terraform",
+      "matchFileNames": [
+        "main.tf",
+        ".terraform/**",
+        ".terraform.lock.hcl"
+      ]
+    },
+    {
+      "groupName": "gradle",
+      "matchFileNames": [
+        "build.gradle",
+        "gradle.properties",
+        "gradle/**"
+      ]
+    }
+  ]
 }
