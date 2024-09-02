@@ -50,7 +50,7 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: java
           queries: security-and-quality
@@ -59,7 +59,7 @@ jobs:
         run: ./gradlew clean test build assemble
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
 
       - name: Upload CodeCov
         uses: codecov/codecov-action@v3
