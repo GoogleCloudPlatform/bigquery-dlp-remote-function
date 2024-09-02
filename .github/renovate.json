@@ -5,7 +5,7 @@
     ":semanticPrefixFixDepsChoreOthers",
     ":ignoreModulesAndTests",
     "group:monorepos",
-    "group:recommended",    
+    "group:recommended",
     "replacements:all",
     "workarounds:all"
   ],
