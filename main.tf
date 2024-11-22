@@ -111,6 +111,7 @@ resource "google_cloud_run_v2_service" "bq_function" {
   name       = var.service_name
   project    = var.project_id
   depends_on = [null_resource.build_function_image]
+  deletion_protection = false
 
   template {
     service_account = google_service_account.run_service_account.email
