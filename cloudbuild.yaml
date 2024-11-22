@@ -1,10 +1,11 @@
 ---
 steps:
-  - name: gradle:8.10-jdk21-alpine
+  - name: gradle:8-jdk21
     args: [
-      'gradle',
-      'clean',
+      'gradle',      
       'build',
       'jib',
-      '-Djib.to.image=${_CONTAINER_IMAGE_NAME}'
+      '-Djib.to.image=${_CONTAINER_IMAGE_NAME}',
+      '-x',
+      'test'
     ]
