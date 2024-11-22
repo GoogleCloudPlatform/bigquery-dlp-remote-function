@@ -65,6 +65,33 @@ resource "google_artifact_registry_repository" "image_registry" {
   location      = var.region
 }
 
+resource "google_service_account" "build_service_account" {
+  account_id = "${var.service_name}-builder"
+  project    = var.project_id
+}
+
+resource "google_project_iam_member" "grant_role_to_build_sa" {  
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${google_service_account.build_service_account.email}"
+}
+
+resource "google_storage_bucket" "cloud_build_bucket" {
+  project = var.project_id
+  location = var.region
+  name = "build_bukcet_${var.service_name}"
+  force_destroy = true
+}
+
+resource "google_storage_bucket_iam_member" "builder_iam_bucket" {
+  for_each = toset([
+    "roles/cloudbuild.builds.builder"
+  ])
+  bucket = google_storage_bucket.cloud_build_bucket.name
+  member = "serviceAccount:${google_service_account.build_service_account.email}"    
+  role = each.key
+}
+
 
 ## Create Image using Cloud Build and store in artifact registry
 resource "random_id" "build_version" {
@@ -77,7 +104,10 @@ resource "random_id" "build_version" {
 }
 
 resource "null_resource" "build_function_image" {
-  depends_on = [google_artifact_registry_repository.image_registry]
+  depends_on = [
+      google_artifact_registry_repository.image_registry,
+      google_storage_bucket_iam_member.builder_iam_bucket
+    ]
 
   triggers = {
     project_id = var.project_id
@@ -91,8 +121,11 @@ resource "null_resource" "build_function_image" {
 gcloud builds submit \
 --project ${var.project_id} \
 --region ${var.region} \
---machine-type=e2-highcpu-8 \
---substitutions=_CONTAINER_IMAGE_NAME=${self.triggers.full_image_path}
+--machine-type e2-highcpu-8 \
+--substitutions _CONTAINER_IMAGE_NAME=${self.triggers.full_image_path} \
+--service-account ${google_service_account.build_service_account.id} \
+--default-buckets-behavior regional-user-owned-bucket \
+--gcs-source-staging-dir gs://${google_storage_bucket.cloud_build_bucket.name}/source
 EOF
   }
 
