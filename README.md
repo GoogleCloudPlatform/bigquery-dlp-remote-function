@@ -1,3 +1,6 @@
+> [!NOTE]
+> This is archived. A fork is maintained by anantdamle at: https://github.com/anantdamle/bigquery-dlp-remote-function
+
 # Use custom encryption in BigQuery using Remote Function, Cloud Run and Data Loss Prevention
 
 *Summary: Learn how to use Remote Functions to de/re-identify data with DLP in BigQuery using SQL.*
