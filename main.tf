@@ -79,7 +79,7 @@ resource "google_project_iam_member" "grant_role_to_build_sa" {
 resource "google_storage_bucket" "cloud_build_bucket" {
   project                     = var.project_id
   location                    = var.region
-  name                        = "build_bukcet_${var.service_name}"
+  name                        = "build_bucket_${var.service_name}"
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
   force_destroy               = true
