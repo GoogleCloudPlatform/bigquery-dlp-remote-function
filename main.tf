@@ -207,6 +207,7 @@ resource "null_resource" "dlp_de_identify_template" {
     region                       = var.region
     dlp_de_id_template_id        = local.template_id
     dlp_de_id_template_full_path = "projects/${var.project_id}/locations/${var.region}/deidentifyTemplates/${local.template_id}"
+    template_file_hash           = filesha256(var.dlp_deid_template_json_file)
   }
 
   provisioner "local-exec" {
