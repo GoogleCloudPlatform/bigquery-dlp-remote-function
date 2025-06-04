@@ -34,8 +34,8 @@ terraform {
 
 provider "google" {
   billing_project = var.project_id
-  project         = var.project_id
-  region          = var.region
+  project = var.project_id
+  region = var.region
 }
 
 ###################################
@@ -70,19 +70,17 @@ resource "google_service_account" "build_service_account" {
   project    = var.project_id
 }
 
-resource "google_project_iam_member" "grant_role_to_build_sa" {
+resource "google_project_iam_member" "grant_role_to_build_sa" {  
   project = var.project_id
   role    = "roles/cloudbuild.builds.builder"
   member  = "serviceAccount:${google_service_account.build_service_account.email}"
 }
 
 resource "google_storage_bucket" "cloud_build_bucket" {
-  project                     = var.project_id
-  location                    = var.region
-  name                        = "build_bucket_${var.service_name}"
-  uniform_bucket_level_access = true
-  public_access_prevention    = "enforced"
-  force_destroy               = true
+  project = var.project_id
+  location = var.region
+  name = "build_bukcet_${var.service_name}"
+  force_destroy = true
 }
 
 resource "google_storage_bucket_iam_member" "builder_iam_bucket" {
@@ -90,8 +88,8 @@ resource "google_storage_bucket_iam_member" "builder_iam_bucket" {
     "roles/cloudbuild.builds.builder"
   ])
   bucket = google_storage_bucket.cloud_build_bucket.name
-  member = "serviceAccount:${google_service_account.build_service_account.email}"
-  role   = each.key
+  member = "serviceAccount:${google_service_account.build_service_account.email}"    
+  role = each.key
 }
 
 
@@ -101,19 +99,19 @@ resource "random_id" "build_version" {
 
   keepers = {
     project_id = var.project_id
-    region     = var.region
+    region =var.region
   }
 }
 
 resource "null_resource" "build_function_image" {
   depends_on = [
-    google_artifact_registry_repository.image_registry,
-    google_storage_bucket_iam_member.builder_iam_bucket
-  ]
+      google_artifact_registry_repository.image_registry,
+      google_storage_bucket_iam_member.builder_iam_bucket
+    ]
 
   triggers = {
-    project_id      = var.project_id
-    region          = var.region
+    project_id = var.project_id
+    region = var.region
     full_image_path = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.image_registry.name}/${var.service_name}:${random_id.build_version.hex}"
   }
 
@@ -142,14 +140,14 @@ EOF
 }
 
 resource "google_cloud_run_v2_service" "bq_function" {
-  location            = var.region
-  name                = var.service_name
-  project             = var.project_id
-  depends_on          = [null_resource.build_function_image]
+  location   = var.region
+  name       = var.service_name
+  project    = var.project_id
+  depends_on = [null_resource.build_function_image]
   deletion_protection = false
 
   template {
-    service_account       = google_service_account.run_service_account.email
+    service_account = google_service_account.run_service_account.email
     execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
 
     containers {
@@ -188,26 +186,25 @@ resource "google_bigquery_dataset" "routines_dataset" {
 
 resource "random_id" "random_de_id_template_id_random" {
   byte_length = 8
-  prefix      = "bqdlpfn_"
+  prefix = "bqdlpfn_"
   keepers = {
     project_id = var.project_id
-    region     = var.region
+    region = var.region
   }
 }
 
 locals {
-  template_id               = random_id.random_de_id_template_id_random.hex
-  de_identify_template_json = merge(jsondecode(file(var.dlp_deid_template_json_file)), { templateId = local.template_id })
+  template_id = random_id.random_de_id_template_id_random.hex
+  de_identify_template_json = merge(jsondecode(file(var.dlp_deid_template_json_file)), {templateId = local.template_id})
 }
 
 
 resource "null_resource" "dlp_de_identify_template" {
   triggers = {
-    project_id                   = var.project_id
-    region                       = var.region
-    dlp_de_id_template_id        = local.template_id
+    project_id = var.project_id
+    region = var.region
+    dlp_de_id_template_id = local.template_id
     dlp_de_id_template_full_path = "projects/${var.project_id}/locations/${var.region}/deidentifyTemplates/${local.template_id}"
-    template_file_hash           = filesha256(var.dlp_deid_template_json_file)
   }
 
   provisioner "local-exec" {
@@ -244,15 +241,15 @@ resource "null_resource" "bq_dlp_encrypt_function" {
   depends_on = [null_resource.dlp_de_identify_template, google_cloud_run_v2_service.bq_function, google_bigquery_connection.external_bq_fn_connection, google_bigquery_dataset.routines_dataset]
 
   triggers = {
-    project_id         = var.project_id
-    region             = var.region
-    dataset_id         = var.bq_dataset
+    project_id = var.project_id
+    region = var.region
+    dataset_id = var.bq_dataset
     cloud_service_name = google_cloud_run_v2_service.bq_function.id
-    cloud_run_uri      = google_cloud_run_v2_service.bq_function.uri
+    cloud_run_uri = google_cloud_run_v2_service.bq_function.uri
   }
 
   provisioner "local-exec" {
-    when    = create
+    when = create
     command = <<EOF
 bq query --project_id "${self.triggers.project_id}" \
 --use_legacy_sql=false \
@@ -263,7 +260,7 @@ EOF
   }
 
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     command = <<EOF
 bq query --project_id "${self.triggers.project_id}" \
 --use_legacy_sql=false \
@@ -278,15 +275,15 @@ resource "null_resource" "bq_dlp_decrypt_function" {
   depends_on = [null_resource.dlp_de_identify_template, google_cloud_run_v2_service.bq_function, google_bigquery_connection.external_bq_fn_connection, google_bigquery_dataset.routines_dataset]
 
   triggers = {
-    project_id         = var.project_id
-    region             = var.region
-    dataset_id         = var.bq_dataset
+    project_id = var.project_id
+    region = var.region
+    dataset_id = var.bq_dataset
     cloud_service_name = google_cloud_run_v2_service.bq_function.id
-    cloud_run_uri      = google_cloud_run_v2_service.bq_function.uri
+    cloud_run_uri = google_cloud_run_v2_service.bq_function.uri
   }
 
   provisioner "local-exec" {
-    when    = create
+    when = create
     command = <<EOF
 bq query --project_id "${self.triggers.project_id}" \
 --use_legacy_sql=false \
@@ -297,7 +294,7 @@ EOF
   }
 
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     command = <<EOF
 bq query --project_id "${self.triggers.project_id}" \
 --use_legacy_sql=false \
