@@ -19,7 +19,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.25.0'
-    id 'org.springframework.boot' version '3.4.4'
+    id 'org.springframework.boot' version '3.5.0'
     id 'jacoco'
     id 'com.google.cloud.tools.jib' version '3.4.5'
     id 'idea'
@@ -30,9 +30,9 @@ apply plugin: 'io.spring.dependency-management'
 group = 'com.google.cloud.solutions'
 version = '0.1.1-SNAPSHOT'
 
-def floggerVersion = "0.8"
+def floggerVersion = "0.9"
 def truthVersion = "1.4.4"
-def protobufVersion = "4.30.2"
+def protobufVersion = "4.31.1"
 
 configurations {
     compileOnly {
@@ -48,8 +48,8 @@ repositories {
 dependencies {
 
     // Commons library deps
-    implementation "com.google.guava:guava:33.4.6-jre"
-    implementation "com.google.code.gson:gson:2.12.1"
+    implementation "com.google.guava:guava:33.4.8-jre"
+    implementation "com.google.code.gson:gson:2.13.1"
 
     // Logging framework
     implementation "com.google.flogger:flogger:${floggerVersion}"
@@ -57,7 +57,7 @@ dependencies {
     runtimeOnly "com.google.flogger:flogger-system-backend:${floggerVersion}"
 
     // Google Cloud Service Client Libraries
-    implementation "com.google.cloud:google-cloud-dlp:3.64.0"
+    implementation "com.google.cloud:google-cloud-dlp:3.67.0"
 
     //Spring deps
     implementation ("org.springframework.boot:spring-boot-starter-web:") {
@@ -68,8 +68,8 @@ dependencies {
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
 
     // Test Deps
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.12.1"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.12.1"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.13.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.13.0"
     testImplementation "com.google.truth:truth:${truthVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
 
@@ -93,7 +93,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 jacoco {
-    toolVersion = "0.8.12"
+    toolVersion = "0.8.13"
 }
 
 test {
